@@ -1,6 +1,6 @@
 # DalalAI — Institutional Equity Terminal for NSE / BSE
 
-**DalalAI** is an institutional-grade stock intelligence and research terminal for the Indian equity markets (NSE & BSE). It combines real-time technical screening across the entire **NIFTY 500**, an institutional **5-Agent AI Investment Council** powered by Google Gemini, customized **Strategic Watchlist Buckets**, and **Upstox Demat Integration** with automated portfolio auditing.
+**DalalAI** is an institutional-grade stock intelligence and research terminal for the Indian equity markets (NSE & BSE). It combines real-time technical screening across the entire **NIFTY 500**, an institutional **5-Agent AI Investment Council** powered by Google Gemini, customized **Strategic Watchlist Buckets**, and **Upstox Demat Integration** with automated portfolio auditing. 
 
 ---
 

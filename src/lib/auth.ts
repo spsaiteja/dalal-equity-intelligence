@@ -42,6 +42,42 @@ function getPendingUsersFile() {
 }
 
 export const AUTH_COOKIE_NAME = 'dalal_auth_session';
+export const APPROVAL_PASS_COOKIE = 'dalal_approval_pass';
+
+// Sign an approval pass tied to a specific email (1-Year Validity)
+export function signApprovalPass(email: string): string {
+  const cleanEmail = email.trim().toLowerCase();
+  const payload = {
+    email: cleanEmail,
+    approved: true,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60, // 365 days
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', getAuthSecret())
+    .update(payloadB64)
+    .digest('base64url');
+  return `${payloadB64}.${signature}`;
+}
+
+// Verify approval pass for a specific email
+export function verifyApprovalPass(token?: string | null, email?: string | null): boolean {
+  if (!token || !email || !token.includes('.')) return false;
+  try {
+    const [payloadB64, signature] = token.split('.');
+    const expectedSig = crypto
+      .createHmac('sha256', getAuthSecret())
+      .update(payloadB64)
+      .digest('base64url');
+    if (signature !== expectedSig) return false;
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    if (payload.exp && Date.now() / 1000 > payload.exp) return false;
+    return payload.email === email.trim().toLowerCase() && payload.approved === true;
+  } catch {
+    return false;
+  }
+}
 
 function ensureDataDir() {
   const dir = getDataDir();

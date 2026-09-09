@@ -5,6 +5,9 @@ import {
   isMasterAdmin,
   recordPendingUser,
   AUTH_COOKIE_NAME,
+  APPROVAL_PASS_COOKIE,
+  signApprovalPass,
+  verifyApprovalPass,
   AuthUser,
   getAuthRedirectUri,
 } from '@/lib/auth';
@@ -68,8 +71,11 @@ export async function GET(request: NextRequest) {
     const name = userData.name || email.split('@')[0];
     const picture = userData.picture || undefined;
 
+    const passCookie = request.cookies.get(APPROVAL_PASS_COOKIE)?.value;
+    const hasValidPass = verifyApprovalPass(passCookie, email);
+
     const isAdmin = isMasterAdmin(email);
-    const isApproved = isAdmin || isUserApproved(email);
+    const isApproved = isAdmin || hasValidPass || isUserApproved(email);
 
     const authUser: AuthUser = {
       id: userData.sub || email,
@@ -92,7 +98,7 @@ export async function GET(request: NextRequest) {
     const destination = isApproved ? `${origin}/?auth=success` : `${origin}/?auth=pending`;
     const response = NextResponse.redirect(destination);
 
-    // Set HTTP-only secure cookie
+    // Set HTTP-only secure session cookie (30 days)
     response.cookies.set(AUTH_COOKIE_NAME, sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -100,6 +106,17 @@ export async function GET(request: NextRequest) {
       path: '/',
       maxAge: 30 * 24 * 60 * 60, // 30 days
     });
+
+    // If approved, issue persistent 1-Year Approval Pass cookie so logout never re-locks them
+    if (isApproved) {
+      response.cookies.set(APPROVAL_PASS_COOKIE, signApprovalPass(email), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 365 * 24 * 60 * 60, // 365 days
+      });
+    }
 
     return response;
   } catch (err: any) {

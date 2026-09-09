@@ -73,8 +73,10 @@ export async function POST(request: NextRequest) {
     const marketOpen = isIndianMarketOpen();
     const isAmo = body.isAmo !== undefined ? body.isAmo : !marketOpen;
 
+    const headerToken = request.headers.get('x-upstox-token');
     const session = getUpstoxSession();
-    const isLiveConnected = Boolean(session && session.is_active && session.access_token);
+    const activeToken = headerToken || (session && session.is_active ? session.access_token : null);
+    const isLiveConnected = Boolean(activeToken);
 
     // 2. Paper Trading Simulation Mode (or fallback if disconnected / requested)
     if (isPaperTrade || !isLiveConnected) {
@@ -122,7 +124,7 @@ export async function POST(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          Authorization: `Bearer ${session!.access_token}`,
+          Authorization: `Bearer ${activeToken}`,
         },
         body: JSON.stringify(upstoxPayload),
       });

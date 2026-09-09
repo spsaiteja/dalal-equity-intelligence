@@ -105,9 +105,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     };
 
     try {
+      const userUpstoxToken = typeof window !== 'undefined'
+        ? localStorage.getItem('dalal_upstox_token')
+        : null;
+
       const res = await fetch('/api/upstox/order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userUpstoxToken ? { 'x-upstox-token': userUpstoxToken } : {}),
+        },
         body: JSON.stringify(payload),
       });
       const data = await res.json();

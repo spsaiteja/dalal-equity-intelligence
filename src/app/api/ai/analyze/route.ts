@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchStockQuote, fetchStockNews } from '@/lib/yahoo-client';
 import { analyzeStockWithGemini } from '@/lib/gemini';
+import { getSessionUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const sessionUser = getSessionUser(request);
+    const isDevBypass = process.env.NODE_ENV === 'development' && !process.env.GOOGLE_CLIENT_ID && !process.env.ENFORCE_AUTH_IN_DEV;
+
+    if (!isDevBypass && (!sessionUser || !sessionUser.isApproved)) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Approved session required to access AI models' },
+        { status: 401 }
+      );
+    }
     const body = await request.json();
     const { symbol, apiKey } = body;
 

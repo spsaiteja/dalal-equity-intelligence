@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   X,
   Key,
@@ -15,7 +15,26 @@ import {
   Unplug,
   ArrowRight,
   Shield,
+  Users,
+  UserPlus,
+  Trash2,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
+
+interface PendingUserRecord {
+  email: string;
+  name: string;
+  picture?: string;
+  requestedAt: string;
+}
+
+interface ApprovedUserRecord {
+  email: string;
+  name: string;
+  approvedAt: string;
+  approvedBy: string;
+}
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -23,6 +42,9 @@ interface SettingsModalProps {
   apiKey: string;
   onSaveApiKey: (key: string) => void;
   onUpstoxStatusChange?: () => void;
+  isAdmin?: boolean;
+  userEmail?: string;
+  onUsersUpdated?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -31,8 +53,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   apiKey,
   onSaveApiKey,
   onUpstoxStatusChange,
+  isAdmin = false,
+  userEmail,
+  onUsersUpdated,
 }) => {
-  const [activeTab, setActiveTab] = useState<'gemini' | 'upstox'>('gemini');
+  const [activeTab, setActiveTab] = useState<'gemini' | 'upstox' | 'access'>('gemini');
 
   // Gemini state
   const [inputKey, setInputKey] = useState(apiKey);
@@ -67,12 +92,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [upstoxMessage, setUpstoxMessage] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedUri, setCopiedUri] = useState(false);
 
+  // Access Management state (Admin only)
+  const [pendingUsers, setPendingUsers] = useState<PendingUserRecord[]>([]);
+  const [approvedUsers, setApprovedUsers] = useState<ApprovedUserRecord[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [preapproveInput, setPreapproveInput] = useState('');
+  const [adminEmail, setAdminEmail] = useState('teja.sai42@gmail.com');
+  const [accessMessage, setAccessMessage] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Fetch Users for Admin
+  const loadUsersList = useCallback(async () => {
+    if (!isAdmin) return;
+    setLoadingUsers(true);
+    try {
+      const res = await fetch('/api/auth/users');
+      const data = await res.json();
+      if (data.success) {
+        setPendingUsers(data.pendingUsers || []);
+        setApprovedUsers(data.approvedUsers || []);
+        if (data.adminEmail) setAdminEmail(data.adminEmail);
+      }
+    } catch (err) {
+      console.error('Failed to load user access list:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [isAdmin]);
+
   // Sync state when modal opens
   useEffect(() => {
     if (isOpen) {
       setInputKey(apiKey || '');
       setTestResult(null);
       setUpstoxMessage(null);
+      setAccessMessage(null);
 
       // Check Gemini server key configuration
       fetch('/api/ai/status')
@@ -89,7 +142,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         .catch((e) => console.error('Gemini status check error:', e));
 
       // Check Upstox connection & credentials
-      fetch('/api/upstox/auth')
+      const userTokenKey = userEmail ? `dalal_upstox_token_${userEmail}` : 'dalal_upstox_token';
+      const storedUserToken = typeof window !== 'undefined' ? localStorage.getItem(userTokenKey) : null;
+
+      fetch('/api/upstox/auth', {
+        headers: storedUserToken ? { 'x-upstox-token': storedUserToken } : {},
+      })
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -100,12 +158,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               apiKeyMasked: data.apiKeyMasked,
               analyticsTokenMasked: data.analyticsTokenMasked,
               hasCredentials: data.hasCredentials,
-              hasAnalyticsToken: data.hasAnalyticsToken,
+              hasAnalyticsToken: data.hasAnalyticsToken || Boolean(storedUserToken),
               tokenType: data.tokenType,
-              isAnalyticsToken: data.isAnalyticsToken,
+              isAnalyticsToken: data.isAnalyticsToken || Boolean(storedUserToken),
               expiresAt: data.expires_at,
             });
-            if (data.isAnalyticsToken) {
+            if (data.isAnalyticsToken || storedUserToken) {
               setUpstoxAuthMethod('analytics');
             } else if (data.hasCredentials) {
               setUpstoxAuthMethod('oauth');
@@ -116,8 +174,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           }
         })
         .catch((e) => console.error('Upstox status check error:', e));
+
+      // Load Users if Admin
+      if (isAdmin) {
+        loadUsersList();
+      }
     }
-  }, [isOpen, apiKey]);
+  }, [isOpen, apiKey, isAdmin, userEmail, loadUsersList]);
 
   if (!isOpen) return null;
 
@@ -179,13 +242,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const res = await fetch('/api/upstox/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-upstox-token': token,
+        },
         body: JSON.stringify({ analyticsToken: token }),
       });
 
       const data = await res.json();
 
       if (data.success) {
+        // Save isolated token in user's browser localStorage
+        const userTokenKey = userEmail ? `dalal_upstox_token_${userEmail}` : 'dalal_upstox_token';
+        localStorage.setItem(userTokenKey, token);
+        localStorage.setItem('dalal_upstox_token', token);
+
         setUpstoxMessage({
           success: true,
           message: `Connected successfully! 1-Year session active (User: ${data.user_name || data.user_id}).`,
@@ -194,7 +265,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         if (onUpstoxStatusChange) onUpstoxStatusChange();
 
         // Refresh Upstox status
-        const statusRes = await fetch('/api/upstox/auth');
+        const statusRes = await fetch('/api/upstox/auth', {
+          headers: { 'x-upstox-token': token },
+        });
         const statusData = await statusRes.json();
         if (statusData.success) {
           setUpstoxStatus({
@@ -204,9 +277,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             apiKeyMasked: statusData.apiKeyMasked,
             analyticsTokenMasked: statusData.analyticsTokenMasked,
             hasCredentials: statusData.hasCredentials,
-            hasAnalyticsToken: statusData.hasAnalyticsToken,
-            tokenType: statusData.tokenType,
-            isAnalyticsToken: statusData.isAnalyticsToken,
+            hasAnalyticsToken: true,
+            tokenType: 'analytics',
+            isAnalyticsToken: true,
             expiresAt: statusData.expires_at,
           });
         }
@@ -253,7 +326,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           success: true,
           message: 'Redirecting to Upstox Secure Login...',
         });
-        // Redirect user to Upstox OAuth portal
         window.location.href = data.loginUrl;
       } else {
         setUpstoxMessage({
@@ -274,10 +346,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Disconnect Upstox Session
   const handleDisconnectUpstox = async () => {
     try {
+      const userTokenKey = userEmail ? `dalal_upstox_token_${userEmail}` : 'dalal_upstox_token';
+      localStorage.removeItem(userTokenKey);
+      localStorage.removeItem('dalal_upstox_token');
+
       const res = await fetch('/api/upstox/auth', { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
-        setUpstoxStatus((prev) => prev ? { ...prev, isConnected: false, userName: null, userId: null } : null);
+        setUpstoxStatus((prev) => (prev ? { ...prev, isConnected: false, userName: null, userId: null } : null));
         setUpstoxMessage({
           success: true,
           message: 'Upstox session disconnected. Portfolio returned to demo mode.',
@@ -289,6 +365,77 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         success: false,
         message: 'Failed to disconnect Upstox session.',
       });
+    }
+  };
+
+  // Admin Actions: Approve User
+  const handleApproveUser = async (email: string, name?: string) => {
+    try {
+      const res = await fetch('/api/auth/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve', email, name }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAccessMessage({ success: true, message: `Approved access for ${email}` });
+        await loadUsersList();
+        if (onUsersUpdated) onUsersUpdated();
+      } else {
+        setAccessMessage({ success: false, message: data.error || 'Failed to approve user' });
+      }
+    } catch (err: any) {
+      setAccessMessage({ success: false, message: err.message || 'Error approving user' });
+    }
+  };
+
+  // Admin Actions: Pre-approve email
+  const handlePreapprove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = preapproveInput.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      setAccessMessage({ success: false, message: 'Please enter a valid email address.' });
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'preapprove', email }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAccessMessage({ success: true, message: `Pre-approved access for ${email}` });
+        setPreapproveInput('');
+        await loadUsersList();
+        if (onUsersUpdated) onUsersUpdated();
+      } else {
+        setAccessMessage({ success: false, message: data.error || 'Failed to pre-approve user' });
+      }
+    } catch (err: any) {
+      setAccessMessage({ success: false, message: err.message || 'Error pre-approving user' });
+    }
+  };
+
+  // Admin Actions: Revoke User
+  const handleRevokeUser = async (email: string) => {
+    if (!confirm(`Are you sure you want to revoke access for ${email}?`)) return;
+
+    try {
+      const res = await fetch(`/api/auth/users?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAccessMessage({ success: true, message: `Access revoked for ${email}` });
+        await loadUsersList();
+        if (onUsersUpdated) onUsersUpdated();
+      } else {
+        setAccessMessage({ success: false, message: data.error || 'Failed to revoke access' });
+      }
+    } catch (err: any) {
+      setAccessMessage({ success: false, message: err.message || 'Error revoking user' });
     }
   };
 
@@ -308,8 +455,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Key className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">System & API Integrations</h3>
-              <p className="text-xs text-surface-muted">Manage Gemini AI keys & Upstox Demat connectivity</p>
+              <h3 className="text-base font-bold text-white">System &amp; API Integrations</h3>
+              <p className="text-xs text-surface-muted">Manage Gemini AI keys, Upstox Demat &amp; Access Controls</p>
             </div>
           </div>
 
@@ -322,10 +469,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Tab Selector */}
-        <div className="flex border-b border-surface-border bg-surface/50 px-5 pt-2 gap-2">
+        <div className="flex border-b border-surface-border bg-surface/50 px-5 pt-2 gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('gemini')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
               activeTab === 'gemini'
                 ? 'border-blue-500 text-white'
                 : 'border-transparent text-surface-muted hover:text-white'
@@ -340,7 +487,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <button
             onClick={() => setActiveTab('upstox')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
               activeTab === 'upstox'
                 ? 'border-blue-500 text-white'
                 : 'border-transparent text-surface-muted hover:text-white'
@@ -358,6 +505,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </span>
             )}
           </button>
+
+          {isAdmin && (
+            <button
+              onClick={() => {
+                setActiveTab('access');
+                loadUsersList();
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
+                activeTab === 'access'
+                  ? 'border-amber-500 text-white'
+                  : 'border-transparent text-surface-muted hover:text-white'
+              }`}
+            >
+              <Users className="h-4 w-4 text-amber-400" />
+              <span>Access Management</span>
+              {pendingUsers.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-black text-[10px] font-black animate-pulse">
+                  {pendingUsers.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Content Body */}
@@ -371,13 +540,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
                   <div className="text-xs">
                     <div className="font-bold text-emerald-300 flex items-center gap-2">
-                      <span>Server API Key Active & Ready</span>
+                      <span>Server API Key Active &amp; Ready</span>
                       <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-200 border border-emerald-500/30">
                         .env.local
                       </span>
                     </div>
                     <p className="text-emerald-300/80 mt-1 leading-relaxed">
-                      Your Gemini key is securely stored in your local project (
+                      Your Gemini key is securely stored in your server environment (
                       <span className="font-mono text-emerald-200 font-bold">{serverKeyStatus.maskedServerKey}</span>
                       ). The 5-Agent Council and Screener access it automatically.
                     </p>
@@ -526,7 +695,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </span>
                     </div>
                     <p className="text-blue-200/80 mt-1 leading-relaxed">
-                      You are currently previewing an 8-holding institutional portfolio. Connect your 1-Year Analytics Token or Upstox developer credentials below to sync your real Demat holdings and trigger real-time AI Council Audits.
+                      You are currently previewing an 8-holding institutional portfolio. Connect your personal 1-Year Analytics Token below. Your token is stored safely in your browser and never shared with other users.
                     </p>
                   </div>
                 </div>
@@ -733,6 +902,197 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span>{upstoxMessage.message}</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB 3: ACCESS MANAGEMENT (ADMIN ONLY) */}
+          {activeTab === 'access' && isAdmin && (
+            <div className="space-y-5">
+              {/* Admin Banner */}
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+                <Shield className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <div className="font-bold text-amber-300 flex items-center gap-2">
+                    <span>Terminal Gatekeeper Active</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                      Zero DB Whitelist
+                    </span>
+                  </div>
+                  <p className="text-amber-200/80 mt-1 leading-relaxed">
+                    Master Administrator: <strong className="font-mono text-white">{adminEmail}</strong>.
+                    Only users approved below can access the DalalAI screener and share your server-side Gemini API key.
+                  </p>
+                </div>
+              </div>
+
+              {/* Pre-Approve Email Form */}
+              <div className="bg-surface border border-surface-border rounded-xl p-4 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-blue-400" />
+                  <span className="text-xs font-bold text-white">Pre-Approve an Email Address</span>
+                </div>
+                <form onSubmit={handlePreapprove} className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="colleague@example.com"
+                    value={preapproveInput}
+                    onChange={(e) => setPreapproveInput(e.target.value)}
+                    className="flex-1 bg-surface-card border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition-all"
+                  >
+                    Pre-Approve
+                  </button>
+                </form>
+                <p className="text-[11px] text-surface-muted">
+                  Pre-approved emails will instantly bypass the pending gate upon their first Google sign-in.
+                </p>
+              </div>
+
+              {/* Access Status Message */}
+              {accessMessage && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-medium flex items-center gap-2 ${
+                    accessMessage.success
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                  }`}
+                >
+                  {accessMessage.success ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                  )}
+                  <span>{accessMessage.message}</span>
+                </div>
+              )}
+
+              {/* SECTION: PENDING REQUESTS */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      Pending Requests ({pendingUsers.length})
+                    </span>
+                  </div>
+                  <button
+                    onClick={loadUsersList}
+                    disabled={loadingUsers}
+                    className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${loadingUsers ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+
+                {pendingUsers.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-surface border border-surface-border text-center text-xs text-surface-muted">
+                    No pending approval requests. When new users attempt Google login, they will be listed here.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {pendingUsers.map((u) => (
+                      <div
+                        key={u.email}
+                        className="p-3.5 rounded-xl bg-surface border border-amber-500/30 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          {u.picture ? (
+                            <img
+                              src={u.picture}
+                              alt={u.name}
+                              className="h-8 w-8 rounded-lg object-cover border border-surface-border"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center justify-center">
+                              {u.name ? u.name.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                          )}
+                          <div>
+                            <div className="text-xs font-bold text-white">{u.name}</div>
+                            <div className="text-[11px] text-surface-muted font-mono">{u.email}</div>
+                            <div className="text-[10px] text-amber-400/80">
+                              Requested {new Date(u.requestedAt).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleApproveUser(u.email, u.name)}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleRevokeUser(u.email)}
+                            className="p-1.5 rounded-lg text-surface-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                            title="Reject Request"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION: APPROVED USERS */}
+              <div className="space-y-2.5 pt-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    Authorized Users ({approvedUsers.length})
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {/* Master Admin Entry */}
+                  <div className="p-3 rounded-xl bg-surface border border-surface-border flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-2">
+                        <span>Master Administrator</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-black uppercase">
+                          Permanent
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-surface-muted font-mono">{adminEmail}</div>
+                    </div>
+                    <span className="text-[10px] text-emerald-400 font-bold">Owner</span>
+                  </div>
+
+                  {approvedUsers.map((u) => {
+                    const isMaster = u.email.toLowerCase() === adminEmail.toLowerCase();
+                    if (isMaster) return null; // already shown above
+
+                    return (
+                      <div
+                        key={u.email}
+                        className="p-3 rounded-xl bg-surface border border-surface-border flex items-center justify-between gap-2"
+                      >
+                        <div>
+                          <div className="text-xs font-bold text-white">{u.name || u.email.split('@')[0]}</div>
+                          <div className="text-[11px] text-surface-muted font-mono">{u.email}</div>
+                          <div className="text-[10px] text-surface-muted">
+                            Approved by {u.approvedBy} • {new Date(u.approvedAt).toLocaleDateString()}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleRevokeUser(u.email)}
+                          className="px-2.5 py-1 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-all"
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>

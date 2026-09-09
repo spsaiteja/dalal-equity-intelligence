@@ -14,6 +14,8 @@ import { CouncilModal } from '@/components/CouncilModal';
 import { PortfolioView } from '@/components/PortfolioView';
 import { PortfolioAuditModal } from '@/components/PortfolioAuditModal';
 import { OrderModal } from '@/components/OrderModal';
+import { LoginGate } from '@/components/LoginGate';
+import { TrendingUp } from 'lucide-react';
 import {
   StockQuote,
   MarketIndex,
@@ -26,7 +28,28 @@ import { UpstoxHolding, PortfolioSummary, PortfolioAuditReport, PortfolioAlert }
 
 const DEFAULT_BUCKETS = ['Long-Term Value', 'Dip Opportunities', 'Momentum Breakouts'];
 
+interface AuthSessionState {
+  authenticated: boolean;
+  isApproved: boolean;
+  isAdmin: boolean;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    picture?: string;
+    role: 'admin' | 'user';
+  } | null;
+  hasGoogleConfig?: boolean;
+  adminEmail?: string;
+  pendingCount?: number;
+}
+
 export default function Dashboard() {
+  // Auth Session State
+  const [session, setSession] = useState<AuthSessionState | null>(null);
+  const [loadingSession, setLoadingSession] = useState<boolean>(true);
+
+  // Tab & Core Data States
   const [activeTab, setActiveTab] = useState<'screener' | 'watchlist' | 'portfolio'>('screener');
   const [indices, setIndices] = useState<MarketIndex[]>([]);
   const [stocks, setStocks] = useState<StockQuote[]>([]);
@@ -86,8 +109,27 @@ export default function Dashboard() {
   const [orderTargetPrice, setOrderTargetPrice] = useState<number | string | undefined>(undefined);
   const [orderStopLossPrice, setOrderStopLossPrice] = useState<number | string | undefined>(undefined);
 
+  // Check Auth Session
+  const loadSession = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/session');
+      const data = await res.json();
+      setSession(data);
+    } catch (err) {
+      console.error('Session load error:', err);
+    } finally {
+      setLoadingSession(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSession();
+  }, [loadSession]);
+
   // Initialize from LocalStorage & Server Disk API
   useEffect(() => {
+    if (!session?.isApproved) return;
+
     try {
       const savedKey = localStorage.getItem('dalal_ai_api_key');
       if (savedKey) setApiKey(savedKey);
@@ -127,7 +169,6 @@ export default function Dashboard() {
           }
         })
         .catch(() => {
-          // Fallback to localStorage
           const savedWatchlist = localStorage.getItem('dalal_ai_watchlist');
           if (savedWatchlist) setWatchlist(JSON.parse(savedWatchlist));
           const savedBuckets = localStorage.getItem('dalal_ai_buckets');
@@ -136,7 +177,7 @@ export default function Dashboard() {
     } catch (e) {
       console.error('Watchlist init error:', e);
     }
-  }, []);
+  }, [session?.isApproved]);
 
   // Fetch Market Indices
   const loadIndices = useCallback(async () => {
@@ -170,11 +211,19 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Fetch Upstox or Demo Portfolio
+  // Fetch Upstox or Demo Portfolio (Scoped to user's personal token)
   const loadPortfolio = useCallback(async (refresh: boolean = false) => {
     setLoadingPortfolio(true);
     try {
-      const res = await fetch(`/api/upstox/portfolio${refresh ? '?refresh=true' : ''}`);
+      const userTokenKey = session?.user?.email ? `dalal_upstox_token_${session.user.email}` : 'dalal_upstox_token';
+      const userUpstoxToken =
+        typeof window !== 'undefined'
+          ? localStorage.getItem(userTokenKey) || localStorage.getItem('dalal_upstox_token')
+          : null;
+
+      const res = await fetch(`/api/upstox/portfolio${refresh ? '?refresh=true' : ''}`, {
+        headers: userUpstoxToken ? { 'x-upstox-token': userUpstoxToken } : {},
+      });
       const data = await res.json();
       if (data.success) {
         setPortfolioHoldings(data.holdings || []);
@@ -191,13 +240,15 @@ export default function Dashboard() {
     } finally {
       setLoadingPortfolio(false);
     }
-  }, []);
+  }, [session?.user?.email]);
 
   useEffect(() => {
-    loadIndices();
-    loadStocks();
-    loadPortfolio();
-  }, [loadIndices, loadStocks, loadPortfolio]);
+    if (session?.isApproved) {
+      loadIndices();
+      loadStocks();
+      loadPortfolio();
+    }
+  }, [session?.isApproved, loadIndices, loadStocks, loadPortfolio]);
 
   // Dictionary of symbol -> quote for fast lookup
   const stockQuotesMap = useMemo(() => {
@@ -307,7 +358,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           symbol: stock.symbol,
-          quote: stock, // Pass existing stock quote for instant response
+          quote: stock,
           apiKey: apiKey || undefined,
         }),
       });
@@ -365,13 +416,13 @@ export default function Dashboard() {
         setPortfolioAuditReport(data.data);
       }
     } catch (err) {
-      console.error('Portfolio audit failed:', err);
+      console.error('Portfolio Audit failed:', err);
     } finally {
       setLoadingPortfolioAudit(false);
     }
   };
 
-  // Open Institutional Order Placement Ticket
+  // Institutional Order Trigger
   const handleOpenOrderModal = (
     stockOrSymbol: StockQuote | string,
     transactionType: 'BUY' | 'SELL' = 'BUY',
@@ -381,52 +432,54 @@ export default function Dashboard() {
     let resolvedStock: StockQuote | null = null;
 
     if (typeof stockOrSymbol === 'string') {
-      const cleanSym = stockOrSymbol.replace('.NS', '').toUpperCase();
-      const matched = stocks.find(
-        (s) => s.symbol.replace('.NS', '').toUpperCase() === cleanSym
+      const clean = stockOrSymbol.replace('.NS', '').replace('.BO', '');
+      const foundInStocks = stocks.find(
+        (s) => s.symbol === stockOrSymbol || s.symbol.replace('.NS', '') === clean
       );
-      if (matched) {
-        resolvedStock = matched;
+
+      if (foundInStocks) {
+        resolvedStock = foundInStocks;
       } else {
-        const holdingMatch = portfolioHoldings.find(
-          (h) => h.trading_symbol.replace('.NS', '').toUpperCase() === cleanSym
+        const foundInHoldings = portfolioHoldings.find(
+          (h) => h.trading_symbol === clean || h.trading_symbol === stockOrSymbol
         );
-        if (holdingMatch) {
+
+        if (foundInHoldings) {
           resolvedStock = {
-            symbol: holdingMatch.trading_symbol.endsWith('.NS')
-              ? holdingMatch.trading_symbol
-              : `${holdingMatch.trading_symbol}.NS`,
-            name: holdingMatch.company_name,
-            price: holdingMatch.last_price,
-            change: holdingMatch.day_change,
-            changePercent: holdingMatch.day_change_percentage,
-            dayHigh: holdingMatch.last_price * 1.02,
-            dayLow: holdingMatch.last_price * 0.98,
+            symbol: `${foundInHoldings.trading_symbol}.NS`,
+            name: foundInHoldings.company_name,
+            price: foundInHoldings.last_price,
+            change: foundInHoldings.day_change,
+            changePercent: foundInHoldings.day_change_percentage,
+            dayHigh: foundInHoldings.last_price * 1.02,
+            dayLow: foundInHoldings.last_price * 0.98,
+            fiftyTwoWeekHigh: foundInHoldings.last_price * 1.2,
+            fiftyTwoWeekLow: foundInHoldings.last_price * 0.8,
             volume: 100000,
-            marketCap: 100000000,
-            fiftyTwoWeekHigh: Math.round(holdingMatch.last_price * 1.15),
-            fiftyTwoWeekLow: Math.round(holdingMatch.last_price * 0.85),
-            discountFromHigh: 10.0,
-            distanceFromLow: 15.0,
-            sector: holdingMatch.sector || 'Equities',
+            marketCap: 0,
+            peRatio: 0,
+            discountFromHigh: 0,
+            distanceFromLow: 0,
+            sector: foundInHoldings.sector || 'Equities',
             signal: 'BUY',
-            signalScore: 7.5,
-            signalReason: 'Holding in Demat portfolio',
-            tags: ['Portfolio'],
+            signalScore: 7,
+            signalReason: 'Holding rebalance target',
+            tags: [],
           };
         } else {
           resolvedStock = {
-            symbol: cleanSym.endsWith('.NS') ? cleanSym : `${cleanSym}.NS`,
-            name: cleanSym,
-            price: 1000,
+            symbol: stockOrSymbol.includes('.') ? stockOrSymbol : `${stockOrSymbol}.NS`,
+            name: stockOrSymbol,
+            price: 100,
             change: 0,
             changePercent: 0,
-            dayHigh: 1000,
-            dayLow: 1000,
-            volume: 1000,
-            marketCap: 1000000,
-            fiftyTwoWeekHigh: 1100,
-            fiftyTwoWeekLow: 900,
+            dayHigh: 102,
+            dayLow: 98,
+            fiftyTwoWeekHigh: 120,
+            fiftyTwoWeekLow: 80,
+            volume: 50000,
+            marketCap: 0,
+            peRatio: 0,
             discountFromHigh: 0,
             distanceFromLow: 0,
             sector: 'Equities',
@@ -448,6 +501,35 @@ export default function Dashboard() {
     setIsOrderOpen(true);
   };
 
+  // Loading State
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 animate-pulse">
+            <TrendingUp className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <span className="text-2xl font-black text-white">
+              Dalal<span className="text-market-blue">AI</span>
+            </span>
+            <p className="text-xs text-surface-muted">Institutional Terminal</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-surface-muted">
+          <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <span>Verifying institutional session...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Gate Unauthenticated or Pending Approval Users
+  if (!session?.authenticated || !session?.isApproved) {
+    return <LoginGate session={session} onRefreshSession={loadSession} />;
+  }
+
+  // Approved User Terminal Stage
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Top Navigation */}
@@ -460,6 +542,13 @@ export default function Dashboard() {
         hasApiKey={Boolean(apiKey || hasServerKey)}
         isUpstoxConnected={isUpstoxConnected}
         portfolioAlertsCount={portfolioAlertCounts.total}
+        user={session?.user}
+        isAdmin={Boolean(session?.isAdmin)}
+        pendingApprovalsCount={session?.pendingCount || 0}
+        onSignOut={async () => {
+          await fetch('/api/auth/logout', { method: 'POST' });
+          window.location.reload();
+        }}
       />
 
       {/* Main Content Area */}
@@ -536,7 +625,7 @@ export default function Dashboard() {
       {/* Footer */}
       <footer className="border-t border-surface-border py-4 bg-surface/50 text-center text-xs text-surface-muted">
         <p>
-          DalalAI • Built with Google Gemini & Yahoo Finance API • NSE / BSE Equity Research Terminal
+          DalalAI • Built with Google Gemini &amp; Yahoo Finance API • Master Admin: {session.adminEmail || 'teja.sai42@gmail.com'}
         </p>
       </footer>
 
@@ -609,13 +698,16 @@ export default function Dashboard() {
         onAdd={handleAddToWatchlist}
       />
 
-      {/* Settings / API Key & Upstox Integration Modal */}
+      {/* Settings / API Key, Upstox Integration & Access Management Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         apiKey={apiKey}
         onSaveApiKey={handleSaveApiKey}
         onUpstoxStatusChange={() => loadPortfolio(true)}
+        isAdmin={Boolean(session?.isAdmin)}
+        userEmail={session?.user?.email}
+        onUsersUpdated={loadSession}
       />
 
       {/* 5-Agent Council Portfolio Audit Modal */}
@@ -636,7 +728,6 @@ export default function Dashboard() {
         suggestedStopLoss={orderStopLossPrice}
         isUpstoxConnected={isUpstoxConnected}
         onOrderSuccess={(_res) => {
-          // Auto-refresh holdings upon order placement
           loadPortfolio(true);
         }}
       />

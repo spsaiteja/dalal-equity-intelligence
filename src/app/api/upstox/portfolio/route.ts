@@ -11,12 +11,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const forceDemo = searchParams.get('demo') === 'true';
 
+    // Prioritize per-user header token (for zero-db user isolation)
+    const headerToken = request.headers.get('x-upstox-token');
     const session = getUpstoxSession();
-    const isLiveConnected = Boolean(session && session.is_active && !forceDemo);
 
-    if (isLiveConnected && session) {
+    const activeToken = !forceDemo && (headerToken || (session && session.is_active ? session.access_token : null));
+    const isLiveConnected = Boolean(activeToken);
+
+    if (isLiveConnected && activeToken) {
       try {
-        const liveHoldings = await fetchLiveUpstoxHoldings(session.access_token);
+        const liveHoldings = await fetchLiveUpstoxHoldings(activeToken);
 
         let totalInvested = 0;
         let currentValue = 0;
@@ -49,11 +53,11 @@ export async function GET(request: NextRequest) {
           success: true,
           isConnected: true,
           isDemoMode: false,
-          user_name: session.user_name,
-          user_id: session.user_id,
-          tokenType: session.token_type || (session.is_analytics_token ? 'analytics' : 'oauth'),
-          isAnalyticsToken: session.token_type === 'analytics' || Boolean(session.is_analytics_token),
-          expires_at: session.expires_at,
+          user_name: session?.user_name || 'Upstox Investor',
+          user_id: session?.user_id || 'LIVE_DEMAT',
+          tokenType: headerToken ? 'analytics' : (session?.token_type || 'oauth'),
+          isAnalyticsToken: Boolean(headerToken || session?.token_type === 'analytics' || session?.is_analytics_token),
+          expires_at: session?.expires_at,
           summary,
           holdings: alertAnalysis.holdingsWithSignals,
           alerts: alertAnalysis.alerts,
@@ -88,4 +92,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

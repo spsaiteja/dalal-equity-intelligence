@@ -2,11 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { UpstoxHolding, PortfolioAuditReport, SectorWeight, RebalanceAction } from '@/types/upstox';
 import { generateGeminiJson } from '@/lib/gemini-helper';
+import { getSessionUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const sessionUser = getSessionUser(request);
+    const isDevBypass = process.env.NODE_ENV === 'development' && !process.env.GOOGLE_CLIENT_ID && !process.env.ENFORCE_AUTH_IN_DEV;
+
+    if (!isDevBypass && (!sessionUser || !sessionUser.isApproved)) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Approved session required to access AI models' },
+        { status: 401 }
+      );
+    }
     const body = await request.json();
     const holdings: UpstoxHolding[] = body?.holdings || [];
     const customApiKey: string | undefined = body?.apiKey;

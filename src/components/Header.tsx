@@ -1,7 +1,25 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, SlidersHorizontal, Bookmark, Settings, Newspaper, TrendingUp, AlertTriangle } from 'lucide-react';
+import {
+  Sparkles,
+  SlidersHorizontal,
+  Bookmark,
+  Settings,
+  Newspaper,
+  TrendingUp,
+  AlertTriangle,
+  LogOut,
+  Shield,
+  UserCheck,
+} from 'lucide-react';
+
+interface AuthUserHeader {
+  email: string;
+  name: string;
+  picture?: string;
+  role: string;
+}
 
 interface HeaderProps {
   activeTab: 'screener' | 'watchlist' | 'portfolio';
@@ -12,6 +30,10 @@ interface HeaderProps {
   hasApiKey: boolean;
   isUpstoxConnected?: boolean;
   portfolioAlertsCount?: number;
+  user?: AuthUserHeader | null;
+  isAdmin?: boolean;
+  pendingApprovalsCount?: number;
+  onSignOut?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,6 +45,10 @@ export const Header: React.FC<HeaderProps> = ({
   hasApiKey,
   isUpstoxConnected = false,
   portfolioAlertsCount = 0,
+  user,
+  isAdmin = false,
+  pendingApprovalsCount = 0,
+  onSignOut,
 }) => {
   return (
     <header className="border-b border-surface-border bg-surface/90 sticky top-0 z-30 backdrop-blur-md">
@@ -42,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-surface-muted hidden sm:block">
-              NSE / BSE Screener & Institutional AI Intelligence
+              NSE / BSE Screener &amp; Institutional AI Intelligence
             </p>
           </div>
         </div>
@@ -129,21 +155,71 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden md:inline">Daily AI Briefing</span>
           </button>
 
-          {/* Settings Button */}
+          {/* Settings / Integrations Button */}
           <button
             onClick={onOpenSettings}
-            className={`p-2 rounded-xl border transition-all ${
+            className={`p-2 rounded-xl border relative transition-all ${
               hasApiKey
                 ? 'bg-surface-card border-surface-border text-surface-muted hover:text-white hover:border-surface-borderLight'
                 : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
             }`}
-            title={hasApiKey ? 'Settings & Gemini API Key' : 'Configure Gemini API Key'}
+            title={hasApiKey ? 'Settings, Upstox & Access' : 'Configure Gemini API Key'}
           >
             <Settings className="h-4 w-4" />
+            {isAdmin && pendingApprovalsCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-amber-500 text-black text-[9px] font-black flex items-center justify-center animate-bounce shadow-sm">
+                {pendingApprovalsCount}
+              </span>
+            )}
           </button>
+
+          {/* User Profile & Sign Out */}
+          {user && (
+            <div className="flex items-center gap-2 pl-2 border-l border-surface-border">
+              <div
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-surface-card border border-surface-border"
+                title={`Signed in as ${user.email}`}
+              >
+                {user.picture ? (
+                  <img
+                    src={user.picture}
+                    alt={user.name}
+                    className="h-6 w-6 rounded-lg object-cover border border-surface-border"
+                  />
+                ) : (
+                  <div className="h-6 w-6 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 font-bold text-xs flex items-center justify-center">
+                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                )}
+                <div className="hidden lg:flex flex-col text-left">
+                  <span className="text-xs font-semibold text-white leading-tight max-w-[110px] truncate">
+                    {user.name || user.email.split('@')[0]}
+                  </span>
+                  {isAdmin ? (
+                    <span className="text-[9px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-0.5">
+                      <Shield className="h-2 w-2" /> Master Admin
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-0.5">
+                      <UserCheck className="h-2 w-2" /> Approved
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {onSignOut && (
+                <button
+                  onClick={onSignOut}
+                  className="p-2 rounded-xl border border-surface-border text-surface-muted hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>
   );
 };
-

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthRedirectUri } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +16,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const host = request.headers.get('host') || 'localhost:3000';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+  const redirectUri = getAuthRedirectUri(request);
 
   const scope = encodeURIComponent('openid email profile');
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(

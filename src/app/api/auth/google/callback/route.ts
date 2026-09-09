@@ -6,6 +6,7 @@ import {
   recordPendingUser,
   AUTH_COOKIE_NAME,
   AuthUser,
+  getAuthRedirectUri,
 } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -15,20 +16,19 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const error = searchParams.get('error');
 
-  const host = request.headers.get('host') || 'localhost:3000';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+  const redirectUri = getAuthRedirectUri(request);
+  const origin = new URL(redirectUri).origin;
 
   if (error || !code) {
     console.error('Google OAuth error:', error);
-    return NextResponse.redirect(`${protocol}://${host}/?auth=error&reason=${encodeURIComponent(error || 'No code returned')}`);
+    return NextResponse.redirect(`${origin}/?auth=error&reason=${encodeURIComponent(error || 'No code returned')}`);
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(`${protocol}://${host}/?auth=error&reason=Missing+Google+credentials`);
+    return NextResponse.redirect(`${origin}/?auth=error&reason=Missing+Google+credentials`);
   }
 
   try {
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     if (!tokenRes.ok || !tokenData.access_token) {
       console.error('Token exchange failed:', tokenData);
-      return NextResponse.redirect(`${protocol}://${host}/?auth=error&reason=Token+exchange+failed`);
+      return NextResponse.redirect(`${origin}/?auth=error&reason=Token+exchange+failed`);
     }
 
     // 2. Fetch User Profile from Google
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     if (!userRes.ok || !userData.email) {
       console.error('Failed to fetch user profile:', userData);
-      return NextResponse.redirect(`${protocol}://${host}/?auth=error&reason=Profile+fetch+failed`);
+      return NextResponse.redirect(`${origin}/?auth=error&reason=Profile+fetch+failed`);
     }
 
     const email = userData.email.trim().toLowerCase();
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     const sessionToken = signSessionPayload(authUser);
 
     // 4. Redirect user based on approval status
-    const destination = isApproved ? `${protocol}://${host}/?auth=success` : `${protocol}://${host}/?auth=pending`;
+    const destination = isApproved ? `${origin}/?auth=success` : `${origin}/?auth=pending`;
     const response = NextResponse.redirect(destination);
 
     // Set HTTP-only secure cookie
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (err: any) {
     console.error('Google OAuth callback error:', err);
-    return NextResponse.redirect(`${protocol}://${host}/?auth=error&reason=${encodeURIComponent(err.message || 'Callback error')}`);
+    return NextResponse.redirect(`${origin}/?auth=error&reason=${encodeURIComponent(err.message || 'Callback error')}`);
   }
 }
 

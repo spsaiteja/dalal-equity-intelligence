@@ -290,3 +290,16 @@ export function getSessionUser(request: NextRequest): AuthUser | null {
   return verifySessionToken(cookie);
 }
 
+// Calculate canonical OAuth redirect URI
+export function getAuthRedirectUri(request: NextRequest): string {
+  if (process.env.APP_URL) {
+    return `${process.env.APP_URL.replace(/\/$/, '')}/api/auth/google/callback`;
+  }
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const host = forwardedHost || request.headers.get('host') || 'dalal-equity-intelligence.vercel.app';
+  const protocol = forwardedProto || (host.includes('localhost') ? 'http' : 'https');
+  return `${protocol}://${host}/api/auth/google/callback`;
+}
+
+

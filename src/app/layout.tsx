@@ -44,6 +44,17 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="DalalAI" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body className="bg-background text-foreground min-h-screen flex flex-col antialiased selection:bg-market-blue selection:text-white">
         {children}

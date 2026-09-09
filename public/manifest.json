@@ -1,32 +1,88 @@
 {
   "name": "DalalAI - Institutional Equity Terminal",
   "short_name": "DalalAI",
-  "description": "NSE / BSE Institutional Screener, 5-Agent Council Deliberation & Upstox Demat Integration",
+  "description": "NSE & BSE Screener, 5-Agent AI Investment Council & Upstox Demat Portfolio Integration",
   "start_url": "/",
+  "scope": "/",
   "id": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#0B0E14",
   "theme_color": "#0B0E14",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["finance", "productivity", "business"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "DalalAI Institutional Equity Screener"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "DalalAI Mobile Terminal"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Institutional Screener",
+      "short_name": "Screener",
+      "description": "Scan 500+ Indian stocks with real-time technicals",
+      "url": "/?tab=screener",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Portfolio",
+      "short_name": "Portfolio",
+      "description": "View live Upstox holdings and P&L alerts",
+      "url": "/?tab=portfolio",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Bucket List",
+      "short_name": "Bucket List",
+      "description": "Track customized stock accumulation buckets",
+      "url": "/?tab=watchlist",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
-

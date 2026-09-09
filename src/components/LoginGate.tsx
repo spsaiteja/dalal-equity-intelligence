@@ -40,6 +40,18 @@ export const LoginGate: React.FC<LoginGateProps> = ({ session, onRefreshSession 
   const [refreshing, setRefreshing] = useState(false);
   const [devLoggingIn, setDevLoggingIn] = useState(false);
   const [devError, setDevError] = useState<string | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const authStatus = params.get('auth');
+      const reason = params.get('reason');
+      if (authStatus === 'error') {
+        setUrlError(reason || 'Authentication failed. Please verify credentials.');
+      }
+    }
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -201,6 +213,16 @@ export const LoginGate: React.FC<LoginGateProps> = ({ session, onRefreshSession 
             /* STATE 1: NOT AUTHENTICATED */
             <div className="bg-surface-card border border-surface-border rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden backdrop-blur-sm">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600"></div>
+
+              {urlError && (
+                <div className="mb-5 p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 shadow-lg">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+                  <div className="flex-1 text-left">
+                    <p className="font-bold text-white">Sign In Error</p>
+                    <p className="text-[11px] text-rose-300/90">{urlError}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Header Badge */}
               <div className="text-center space-y-2 pb-6 border-b border-surface-border">

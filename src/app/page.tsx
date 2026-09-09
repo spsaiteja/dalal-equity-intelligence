@@ -15,6 +15,7 @@ import { PortfolioView } from '@/components/PortfolioView';
 import { PortfolioAuditModal } from '@/components/PortfolioAuditModal';
 import { OrderModal } from '@/components/OrderModal';
 import { LoginGate } from '@/components/LoginGate';
+import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
 import { TrendingUp } from 'lucide-react';
 import {
   StockQuote,
@@ -526,7 +527,12 @@ export default function Dashboard() {
 
   // Gate Unauthenticated or Pending Approval Users
   if (!session?.authenticated || !session?.isApproved) {
-    return <LoginGate session={session} onRefreshSession={loadSession} />;
+    return (
+      <>
+        <LoginGate session={session} onRefreshSession={loadSession} />
+        <InstallPwaPrompt />
+      </>
+    );
   }
 
   // Approved User Terminal Stage
@@ -731,6 +737,9 @@ export default function Dashboard() {
           loadPortfolio(true);
         }}
       />
+
+      {/* PWA Mobile Install Prompt */}
+      <InstallPwaPrompt />
     </div>
   );
 }

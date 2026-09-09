@@ -9,21 +9,38 @@ export interface UpstoxConfig {
   analyticsToken?: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const SESSION_FILE = path.join(DATA_DIR, 'upstox_session.json');
-const CONFIG_FILE = path.join(DATA_DIR, 'upstox_config.json');
+function getDataDir(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join('/tmp', 'dalal_data');
+  }
+  return path.join(process.cwd(), 'data');
+}
+
+function getSessionFile() {
+  return path.join(getDataDir(), 'upstox_session.json');
+}
+
+function getConfigFile() {
+  return path.join(getDataDir(), 'upstox_config.json');
+}
 
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const dir = getDataDir();
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err) {
+    console.warn('Warning: Could not create data dir:', err);
   }
 }
 
 export function getUpstoxConfig(): UpstoxConfig {
   ensureDataDir();
+  const cfgFile = getConfigFile();
   try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const content = fs.readFileSync(CONFIG_FILE, 'utf8');
+    if (fs.existsSync(cfgFile)) {
+      const content = fs.readFileSync(cfgFile, 'utf8');
       return JSON.parse(content);
     }
   } catch (e) {
@@ -47,7 +64,7 @@ export function saveUpstoxConfig(config: UpstoxConfig) {
       ...current,
       ...config,
     };
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(updated, null, 2), 'utf8');
+    fs.writeFileSync(getConfigFile(), JSON.stringify(updated, null, 2), 'utf8');
     return true;
   } catch (e) {
     console.error('Error saving upstox_config.json:', e);
@@ -57,9 +74,10 @@ export function saveUpstoxConfig(config: UpstoxConfig) {
 
 export function getUpstoxSession(): UpstoxSession | null {
   ensureDataDir();
+  const sessFile = getSessionFile();
   try {
-    if (!fs.existsSync(SESSION_FILE)) return null;
-    const content = fs.readFileSync(SESSION_FILE, 'utf8');
+    if (!fs.existsSync(sessFile)) return null;
+    const content = fs.readFileSync(sessFile, 'utf8');
     const session = JSON.parse(content) as UpstoxSession;
 
     // Check 24-hour expiration
@@ -78,7 +96,7 @@ export function getUpstoxSession(): UpstoxSession | null {
 export function saveUpstoxSession(session: UpstoxSession) {
   ensureDataDir();
   try {
-    fs.writeFileSync(SESSION_FILE, JSON.stringify(session, null, 2), 'utf8');
+    fs.writeFileSync(getSessionFile(), JSON.stringify(session, null, 2), 'utf8');
     return true;
   } catch (e) {
     console.error('Error saving upstox_session.json:', e);
@@ -119,9 +137,10 @@ export function saveAnalyticsSession(
 
 export function clearUpstoxSession() {
   ensureDataDir();
+  const sessFile = getSessionFile();
   try {
-    if (fs.existsSync(SESSION_FILE)) {
-      fs.unlinkSync(SESSION_FILE);
+    if (fs.existsSync(sessFile)) {
+      fs.unlinkSync(sessFile);
     }
     return true;
   } catch (e) {

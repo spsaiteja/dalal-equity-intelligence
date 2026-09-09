@@ -26,14 +26,31 @@ export interface PendingUserRecord {
   requestedAt: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const APPROVED_USERS_FILE = path.join(DATA_DIR, 'approved_users.json');
-const PENDING_USERS_FILE = path.join(DATA_DIR, 'pending_users.json');
+function getDataDir(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join('/tmp', 'dalal_data');
+  }
+  return path.join(process.cwd(), 'data');
+}
+
+function getApprovedUsersFile() {
+  return path.join(getDataDir(), 'approved_users.json');
+}
+
+function getPendingUsersFile() {
+  return path.join(getDataDir(), 'pending_users.json');
+}
+
 export const AUTH_COOKIE_NAME = 'dalal_auth_session';
 
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const dir = getDataDir();
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err) {
+    console.warn('Warning: Could not create data dir:', err);
   }
 }
 
@@ -57,10 +74,11 @@ export function isMasterAdmin(email?: string | null): boolean {
 export function getApprovedUsers(): ApprovedUserRecord[] {
   ensureDataDir();
   const records: ApprovedUserRecord[] = [];
+  const approvedFile = getApprovedUsersFile();
 
   try {
-    if (fs.existsSync(APPROVED_USERS_FILE)) {
-      const content = fs.readFileSync(APPROVED_USERS_FILE, 'utf8');
+    if (fs.existsSync(approvedFile)) {
+      const content = fs.readFileSync(approvedFile, 'utf8');
       const parsed = JSON.parse(content);
       if (Array.isArray(parsed)) {
         records.push(...parsed);
@@ -94,7 +112,7 @@ export function getApprovedUsers(): ApprovedUserRecord[] {
 function saveApprovedUsers(records: ApprovedUserRecord[]) {
   ensureDataDir();
   try {
-    fs.writeFileSync(APPROVED_USERS_FILE, JSON.stringify(records, null, 2), 'utf8');
+    fs.writeFileSync(getApprovedUsersFile(), JSON.stringify(records, null, 2), 'utf8');
     return true;
   } catch (err) {
     console.error('Error saving approved_users.json:', err);
@@ -105,9 +123,10 @@ function saveApprovedUsers(records: ApprovedUserRecord[]) {
 // Read Pending Users
 export function getPendingUsers(): PendingUserRecord[] {
   ensureDataDir();
+  const pendingFile = getPendingUsersFile();
   try {
-    if (fs.existsSync(PENDING_USERS_FILE)) {
-      const content = fs.readFileSync(PENDING_USERS_FILE, 'utf8');
+    if (fs.existsSync(pendingFile)) {
+      const content = fs.readFileSync(pendingFile, 'utf8');
       const parsed = JSON.parse(content);
       if (Array.isArray(parsed)) {
         return parsed;
@@ -123,7 +142,7 @@ export function getPendingUsers(): PendingUserRecord[] {
 function savePendingUsers(records: PendingUserRecord[]) {
   ensureDataDir();
   try {
-    fs.writeFileSync(PENDING_USERS_FILE, JSON.stringify(records, null, 2), 'utf8');
+    fs.writeFileSync(getPendingUsersFile(), JSON.stringify(records, null, 2), 'utf8');
     return true;
   } catch (err) {
     console.error('Error saving pending_users.json:', err);

@@ -2,13 +2,29 @@ import fs from 'fs';
 import path from 'path';
 import { WatchlistItem } from '@/types/stock';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const WATCHLIST_FILE = path.join(DATA_DIR, 'watchlist.json');
-const BUCKETS_FILE = path.join(DATA_DIR, 'buckets.json');
+function getDataDir(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join('/tmp', 'dalal_data');
+  }
+  return path.join(process.cwd(), 'data');
+}
+
+function getWatchlistFile() {
+  return path.join(getDataDir(), 'watchlist.json');
+}
+
+function getBucketsFile() {
+  return path.join(getDataDir(), 'buckets.json');
+}
 
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const dir = getDataDir();
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err) {
+    console.warn('Warning: Could not create data dir:', err);
   }
 }
 
@@ -44,19 +60,26 @@ export function loadWatchlistFromDisk(): { watchlist: WatchlistItem[]; buckets: 
     ensureDataDir();
 
     let watchlist = DEFAULT_WATCHLIST;
-    if (fs.existsSync(WATCHLIST_FILE)) {
-      const raw = fs.readFileSync(WATCHLIST_FILE, 'utf-8');
+    const wlFile = getWatchlistFile();
+    const bkFile = getBucketsFile();
+
+    if (fs.existsSync(wlFile)) {
+      const raw = fs.readFileSync(wlFile, 'utf-8');
       watchlist = JSON.parse(raw);
     } else {
-      fs.writeFileSync(WATCHLIST_FILE, JSON.stringify(DEFAULT_WATCHLIST, null, 2), 'utf-8');
+      try {
+        fs.writeFileSync(wlFile, JSON.stringify(DEFAULT_WATCHLIST, null, 2), 'utf-8');
+      } catch {}
     }
 
     let buckets = DEFAULT_BUCKETS;
-    if (fs.existsSync(BUCKETS_FILE)) {
-      const raw = fs.readFileSync(BUCKETS_FILE, 'utf-8');
+    if (fs.existsSync(bkFile)) {
+      const raw = fs.readFileSync(bkFile, 'utf-8');
       buckets = JSON.parse(raw);
     } else {
-      fs.writeFileSync(BUCKETS_FILE, JSON.stringify(DEFAULT_BUCKETS, null, 2), 'utf-8');
+      try {
+        fs.writeFileSync(bkFile, JSON.stringify(DEFAULT_BUCKETS, null, 2), 'utf-8');
+      } catch {}
     }
 
     return { watchlist, buckets };
@@ -69,9 +92,11 @@ export function loadWatchlistFromDisk(): { watchlist: WatchlistItem[]; buckets: 
 export function saveWatchlistToDisk(watchlist: WatchlistItem[], buckets?: string[]) {
   try {
     ensureDataDir();
-    fs.writeFileSync(WATCHLIST_FILE, JSON.stringify(watchlist, null, 2), 'utf-8');
+    const wlFile = getWatchlistFile();
+    const bkFile = getBucketsFile();
+    fs.writeFileSync(wlFile, JSON.stringify(watchlist, null, 2), 'utf-8');
     if (buckets && buckets.length > 0) {
-      fs.writeFileSync(BUCKETS_FILE, JSON.stringify(buckets, null, 2), 'utf-8');
+      fs.writeFileSync(bkFile, JSON.stringify(buckets, null, 2), 'utf-8');
     }
   } catch (error) {
     console.error('Error saving watchlist to disk:', error);

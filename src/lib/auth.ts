@@ -61,7 +61,14 @@ export function getAdminEmail(): string {
 
 // Auth Secret for Signing Session Cookies
 function getAuthSecret(): string {
-  return process.env.AUTH_SECRET || 'dalal-ai-terminal-secure-secret-key-2026-production';
+  if (process.env.AUTH_SECRET) {
+    return process.env.AUTH_SECRET;
+  }
+  // In production, fallback to private server entropy so cookies cannot be forged from git source
+  if (process.env.GOOGLE_CLIENT_SECRET || process.env.GEMINI_API_KEY) {
+    return `dalal_sec_${process.env.GOOGLE_CLIENT_SECRET || ''}_${process.env.GEMINI_API_KEY || ''}`;
+  }
+  return 'dalal-ai-terminal-secure-secret-key-2026-production';
 }
 
 // Check if an email is the Master Admin

@@ -8,11 +8,17 @@ import {
   maskKey,
 } from '@/lib/upstox-storage';
 import { getUpstoxLoginUrl } from '@/lib/upstox-client';
+import { getSessionUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const sessionUser = getSessionUser(request);
+    if (!sessionUser || !sessionUser.isApproved) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const config = getUpstoxConfig();
     const session = getUpstoxSession();
 
@@ -42,6 +48,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const sessionUser = getSessionUser(request);
+    if (!sessionUser || !sessionUser.isApproved) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     let body: any = {};
     try {
       body = await request.json();
@@ -140,8 +151,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
+    const sessionUser = getSessionUser(request);
+    if (!sessionUser || !sessionUser.isApproved) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     clearUpstoxSession();
     return NextResponse.json({
       success: true,

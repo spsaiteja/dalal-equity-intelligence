@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUpstoxSession } from '@/lib/upstox-storage';
 import { OrderPlacementRequest, OrderPlacementResponse } from '@/types/upstox';
+import { getSessionUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,14 @@ function isIndianMarketOpen(): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    const sessionUser = getSessionUser(request);
+    if (!sessionUser || !sessionUser.isApproved) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: You must be signed in and approved to execute trades.' },
+        { status: 401 }
+      );
+    }
+
     const body: OrderPlacementRequest = await request.json();
 
     const {

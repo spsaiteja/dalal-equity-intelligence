@@ -3,11 +3,20 @@ import { getUpstoxSession } from '@/lib/upstox-storage';
 import { fetchLiveUpstoxHoldings, generateSamplePortfolio } from '@/lib/upstox-client';
 import { PortfolioSummary, UpstoxHolding } from '@/types/upstox';
 import { analyzePortfolioAlerts } from '@/lib/portfolio-alerts';
+import { getSessionUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    const sessionUser = getSessionUser(request);
+    if (!sessionUser || !sessionUser.isApproved) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Please sign in to view portfolio holdings.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const forceDemo = searchParams.get('demo') === 'true';
 

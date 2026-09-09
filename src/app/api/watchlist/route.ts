@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadWatchlistFromDisk, saveWatchlistToDisk } from '@/lib/storage';
+import { getSessionUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const sessionUser = getSessionUser(request);
+    if (!sessionUser || !sessionUser.isApproved) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const data = loadWatchlistFromDisk();
     return NextResponse.json({ success: true, ...data });
   } catch (error: any) {
@@ -17,6 +23,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const sessionUser = getSessionUser(request);
+    if (!sessionUser || !sessionUser.isApproved) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { watchlist, buckets } = body;
 

@@ -101,6 +101,12 @@ export default function Dashboard() {
   const [isCouncilOpen, setIsCouncilOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'gemini' | 'upstox' | 'access'>('gemini');
+
+  const handleOpenSettings = (tab: 'gemini' | 'upstox' | 'access' = 'gemini') => {
+    setSettingsTab(tab);
+    setIsSettingsOpen(true);
+  };
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   // Institutional Order Modal States
@@ -543,7 +549,8 @@ export default function Dashboard() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenBriefing={handleOpenBriefing}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={() => handleOpenSettings('gemini')}
+        onOpenAccess={() => handleOpenSettings('access')}
         watchlistCount={watchlist.length}
         hasApiKey={Boolean(apiKey || hasServerKey)}
         isUpstoxConnected={isUpstoxConnected}
@@ -714,6 +721,7 @@ export default function Dashboard() {
         isAdmin={Boolean(session?.isAdmin)}
         userEmail={session?.user?.email}
         onUsersUpdated={loadSession}
+        initialTab={settingsTab}
       />
 
       {/* 5-Agent Council Portfolio Audit Modal */}

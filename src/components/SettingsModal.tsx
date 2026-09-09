@@ -45,6 +45,7 @@ interface SettingsModalProps {
   isAdmin?: boolean;
   userEmail?: string;
   onUsersUpdated?: () => void;
+  initialTab?: 'gemini' | 'upstox' | 'access';
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -56,8 +57,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isAdmin = false,
   userEmail,
   onUsersUpdated,
+  initialTab = 'gemini',
 }) => {
-  const [activeTab, setActiveTab] = useState<'gemini' | 'upstox' | 'access'>('gemini');
+  const [activeTab, setActiveTab] = useState<'gemini' | 'upstox' | 'access'>(initialTab);
 
   // Gemini state
   const [inputKey, setInputKey] = useState(apiKey);
@@ -122,6 +124,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Sync state when modal opens
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
       setInputKey(apiKey || '');
       setTestResult(null);
       setUpstoxMessage(null);

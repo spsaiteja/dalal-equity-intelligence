@@ -26,6 +26,7 @@ interface HeaderProps {
   setActiveTab: (tab: 'screener' | 'watchlist' | 'portfolio') => void;
   onOpenBriefing: () => void;
   onOpenSettings: () => void;
+  onOpenAccess?: () => void;
   watchlistCount: number;
   hasApiKey: boolean;
   isUpstoxConnected?: boolean;
@@ -41,6 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   onOpenBriefing,
   onOpenSettings,
+  onOpenAccess,
   watchlistCount,
   hasApiKey,
   isUpstoxConnected = false,
@@ -154,6 +156,23 @@ export const Header: React.FC<HeaderProps> = ({
             <Newspaper className="h-4 w-4 text-amber-400 animate-pulse" />
             <span className="hidden md:inline">Daily AI Briefing</span>
           </button>
+
+          {/* Dedicated Admin Access Management Button */}
+          {isAdmin && (
+            <button
+              onClick={onOpenAccess || onOpenSettings}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200 transition-all text-xs font-bold shadow-sm"
+              title="View authorized users & approve requests"
+            >
+              <Shield className="h-4 w-4 text-amber-400" />
+              <span className="hidden sm:inline">Access</span>
+              {pendingApprovalsCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-black text-[10px] font-black animate-pulse">
+                  {pendingApprovalsCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Settings / Integrations Button */}
           <button

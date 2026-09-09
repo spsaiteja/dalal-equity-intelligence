@@ -14,6 +14,7 @@ import {
   Check,
   Unplug,
   ArrowRight,
+  Shield,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -46,16 +47,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Upstox state
   const [upstoxApiKey, setUpstoxApiKey] = useState('');
   const [upstoxApiSecret, setUpstoxApiSecret] = useState('');
+  const [upstoxAnalyticsToken, setUpstoxAnalyticsToken] = useState('');
+  const [upstoxAuthMethod, setUpstoxAuthMethod] = useState<'analytics' | 'oauth'>('analytics');
   const [upstoxRedirectUri, setUpstoxRedirectUri] = useState('http://localhost:3000/api/upstox/callback');
   const [upstoxStatus, setUpstoxStatus] = useState<{
     isConnected: boolean;
     userName?: string | null;
     userId?: string | null;
     apiKeyMasked?: string | null;
+    analyticsTokenMasked?: string | null;
     hasCredentials?: boolean;
+    hasAnalyticsToken?: boolean;
+    tokenType?: 'oauth' | 'analytics';
+    isAnalyticsToken?: boolean;
     expiresAt?: string | null;
   } | null>(null);
   const [connectingUpstox, setConnectingUpstox] = useState(false);
+  const [connectingAnalytics, setConnectingAnalytics] = useState(false);
   const [upstoxMessage, setUpstoxMessage] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedUri, setCopiedUri] = useState(false);
 
@@ -90,9 +98,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               userName: data.user_name,
               userId: data.user_id,
               apiKeyMasked: data.apiKeyMasked,
+              analyticsTokenMasked: data.analyticsTokenMasked,
               hasCredentials: data.hasCredentials,
+              hasAnalyticsToken: data.hasAnalyticsToken,
+              tokenType: data.tokenType,
+              isAnalyticsToken: data.isAnalyticsToken,
               expiresAt: data.expires_at,
             });
+            if (data.isAnalyticsToken) {
+              setUpstoxAuthMethod('analytics');
+            } else if (data.hasCredentials) {
+              setUpstoxAuthMethod('oauth');
+            }
             if (data.redirectUri) {
               setUpstoxRedirectUri(data.redirectUri);
             }
@@ -142,6 +159,70 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setTestResult({ success: false, message: 'Network error connecting to Gemini API.' });
     } finally {
       setTestingGemini(false);
+    }
+  };
+
+  // Connect via 1-Year Analytics Access Token (Instant 365-Day Validity)
+  const handleConnectAnalytics = async () => {
+    const token = upstoxAnalyticsToken.trim();
+    if (!token) {
+      setUpstoxMessage({
+        success: false,
+        message: 'Please paste your 1-Year Analytics Access Token from Upstox Developer portal.',
+      });
+      return;
+    }
+
+    setConnectingAnalytics(true);
+    setUpstoxMessage(null);
+
+    try {
+      const res = await fetch('/api/upstox/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ analyticsToken: token }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setUpstoxMessage({
+          success: true,
+          message: `Connected successfully! 1-Year session active (User: ${data.user_name || data.user_id}).`,
+        });
+        setUpstoxAnalyticsToken('');
+        if (onUpstoxStatusChange) onUpstoxStatusChange();
+
+        // Refresh Upstox status
+        const statusRes = await fetch('/api/upstox/auth');
+        const statusData = await statusRes.json();
+        if (statusData.success) {
+          setUpstoxStatus({
+            isConnected: statusData.isConnected,
+            userName: statusData.user_name,
+            userId: statusData.user_id,
+            apiKeyMasked: statusData.apiKeyMasked,
+            analyticsTokenMasked: statusData.analyticsTokenMasked,
+            hasCredentials: statusData.hasCredentials,
+            hasAnalyticsToken: statusData.hasAnalyticsToken,
+            tokenType: statusData.tokenType,
+            isAnalyticsToken: statusData.isAnalyticsToken,
+            expiresAt: statusData.expires_at,
+          });
+        }
+      } else {
+        setUpstoxMessage({
+          success: false,
+          message: data.error || 'Failed to verify Upstox Analytics Token.',
+        });
+      }
+    } catch (err: any) {
+      setUpstoxMessage({
+        success: false,
+        message: err.message || 'Connection error. Please try again.',
+      });
+    } finally {
+      setConnectingAnalytics(false);
     }
   };
 
@@ -397,18 +478,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="flex items-start gap-3">
                     <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
                     <div>
-                      <div className="font-bold text-emerald-300 flex items-center gap-2 text-xs">
-                        <span>Upstox Live Session Active</span>
+                      <div className="font-bold text-emerald-300 flex items-center gap-2 text-xs flex-wrap">
+                        <span>
+                          {upstoxStatus.isAnalyticsToken
+                            ? '1-Year Analytics Session Active'
+                            : 'Upstox Live Session Active'}
+                        </span>
                         <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-200 border border-emerald-500/30">
                           {upstoxStatus.userName || upstoxStatus.userId || 'Demat Linked'}
                         </span>
+                        {upstoxStatus.isAnalyticsToken && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+                            365 Days • Read-Only
+                          </span>
+                        )}
                       </div>
                       <p className="text-emerald-300/80 text-[11px] mt-1 leading-relaxed">
-                        DalalAI is synchronizing live Demat holdings, buy average prices, and real-time P&L directly from your Upstox account.
+                        {upstoxStatus.isAnalyticsToken
+                          ? 'Synchronizing live Demat holdings, buy average prices, and P&L with 1-year continuous validity.'
+                          : 'DalalAI is synchronizing live Demat holdings, buy average prices, and real-time P&L directly from your Upstox account.'}
                       </p>
                       {upstoxStatus.expiresAt && (
                         <p className="text-[10px] text-surface-muted mt-1">
-                          Session valid until: {new Date(upstoxStatus.expiresAt).toLocaleTimeString()} (SEBI 24hr OAuth rule)
+                          {upstoxStatus.isAnalyticsToken
+                            ? `Valid until: ${new Date(upstoxStatus.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} (${Math.max(0, Math.round((new Date(upstoxStatus.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days remaining)`
+                            : `Session valid until: ${new Date(upstoxStatus.expiresAt).toLocaleTimeString()} (SEBI 24hr OAuth rule)`}
                         </p>
                       )}
                     </div>
@@ -432,90 +526,199 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </span>
                     </div>
                     <p className="text-blue-200/80 mt-1 leading-relaxed">
-                      You are currently previewing an 8-holding institutional portfolio. Link your free Upstox developer credentials below to sync your real Demat holdings and trigger real-time AI Council Audits.
+                      You are currently previewing an 8-holding institutional portfolio. Connect your 1-Year Analytics Token or Upstox developer credentials below to sync your real Demat holdings and trigger real-time AI Council Audits.
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* 3 Step Setup Guide */}
-              <div className="bg-surface border border-surface-border rounded-xl p-3.5 text-xs space-y-2">
-                <div className="font-bold text-white flex items-center justify-between">
-                  <span>How to connect your Upstox account (SEBI compliant):</span>
-                  <a
-                    href="https://developer.upstox.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold"
-                  >
-                    <span>Developer Portal</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-                <ol className="list-decimal list-inside text-surface-muted text-[11px] space-y-1">
-                  <li>Log in to <span className="text-white font-mono">developer.upstox.com</span> and create a free app</li>
-                  <li>Paste the Redirect URL below into your app settings</li>
-                  <li>Copy your <span className="text-white">API Key</span> &amp; <span className="text-white">API Secret</span> here and click Connect</li>
-                </ol>
+              {/* Method Switcher */}
+              <div className="flex items-center gap-1.5 p-1 bg-surface rounded-xl border border-surface-border text-xs">
+                <button
+                  type="button"
+                  onClick={() => setUpstoxAuthMethod('analytics')}
+                  className={`flex-1 py-2 px-3 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    upstoxAuthMethod === 'analytics'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-surface-muted hover:text-white'
+                  }`}
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  <span>1-Year Analytics Token (Recommended)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUpstoxAuthMethod('oauth')}
+                  className={`flex-1 py-2 px-3 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    upstoxAuthMethod === 'oauth'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-surface-muted hover:text-white'
+                  }`}
+                >
+                  <Key className="h-3.5 w-3.5" />
+                  <span>Daily OAuth 2.0 (Full Trading)</span>
+                </button>
               </div>
 
-              {/* Redirect URI Field with Copy Button */}
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-surface-muted block mb-1.5">
-                  Redirect URL (Must match your Upstox App)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={upstoxRedirectUri}
-                    onChange={(e) => setUpstoxRedirectUri(e.target.value)}
-                    className="flex-1 bg-surface border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopyRedirect}
-                    className="px-3 py-2 rounded-xl bg-surface border border-surface-border hover:border-surface-borderLight text-xs font-semibold text-white flex items-center gap-1.5 transition-all"
-                  >
-                    {copiedUri ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                    <span>{copiedUri ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Upstox API Key */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-surface-muted">
-                    Upstox API Key (Client ID)
-                  </label>
-                  {upstoxStatus?.apiKeyMasked && (
-                    <span className="text-[11px] text-surface-muted font-mono">
-                      Saved: {upstoxStatus.apiKeyMasked}
+              {/* SECTION A: 1-YEAR ANALYTICS ACCESS TOKEN */}
+              {upstoxAuthMethod === 'analytics' && (
+                <div className="space-y-3 bg-surface border border-surface-border rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-white text-xs block">1-Year Analytics Access Token</span>
+                      <p className="text-[11px] text-surface-muted mt-0.5">
+                        Generated in your Upstox Developer App. Valid for <strong className="text-blue-400">365 days</strong> with read-only access to Demat holdings, positions, and live P&amp;L without daily login.
+                      </p>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 shrink-0">
+                      No Daily Login
                     </span>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  placeholder={upstoxStatus?.apiKeyMasked ? 'Enter new key to update...' : 'e.g. 1a2b3c4d-5e6f-7a8b-9c0d...'}
-                  value={upstoxApiKey}
-                  onChange={(e) => setUpstoxApiKey(e.target.value)}
-                  className="w-full bg-surface border border-surface-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                />
-              </div>
+                  </div>
 
-              {/* Upstox API Secret */}
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-surface-muted block mb-1.5">
-                  Upstox API Secret
-                </label>
-                <input
-                  type="password"
-                  placeholder={upstoxStatus?.hasCredentials ? '••••••••••••••••' : 'Enter your Upstox API secret'}
-                  value={upstoxApiSecret}
-                  onChange={(e) => setUpstoxApiSecret(e.target.value)}
-                  className="w-full bg-surface border border-surface-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                />
-              </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-surface-muted block mb-1">
+                      Analytics Access Token
+                    </label>
+                    <input
+                      type="password"
+                      placeholder={
+                        upstoxStatus?.analyticsTokenMasked
+                          ? `Saved: ${upstoxStatus.analyticsTokenMasked}`
+                          : 'Paste your Upstox 1-Year Analytics Access Token here...'
+                      }
+                      value={upstoxAnalyticsToken}
+                      onChange={(e) => setUpstoxAnalyticsToken(e.target.value)}
+                      className="w-full bg-surface-card border border-surface-border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors font-mono"
+                    />
+                    <div className="flex items-center justify-between text-[10px] text-surface-muted mt-1.5">
+                      <span>Copied directly from developer.upstox.com app details.</span>
+                      <a
+                        href="https://developer.upstox.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-400 hover:underline flex items-center gap-0.5 font-semibold"
+                      >
+                        Developer Portal <ExternalLink className="h-2.5 w-2.5" />
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="pt-1 flex justify-end">
+                    <button
+                      onClick={handleConnectAnalytics}
+                      disabled={connectingAnalytics || !upstoxAnalyticsToken.trim()}
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-1.5 transition-all disabled:opacity-50"
+                    >
+                      {connectingAnalytics ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                      )}
+                      <span>Verify &amp; Connect (365-Day Access)</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION B: DAILY OAUTH 2.0 */}
+              {upstoxAuthMethod === 'oauth' && (
+                <div className="space-y-4">
+                  {/* 3 Step Setup Guide */}
+                  <div className="bg-surface border border-surface-border rounded-xl p-3.5 text-xs space-y-2">
+                    <div className="font-bold text-white flex items-center justify-between">
+                      <span>How to connect via Daily OAuth (SEBI compliant):</span>
+                      <a
+                        href="https://developer.upstox.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold"
+                      >
+                        <span>Developer Portal</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <ol className="list-decimal list-inside text-surface-muted text-[11px] space-y-1">
+                      <li>Log in to <span className="text-white font-mono">developer.upstox.com</span> and open your app</li>
+                      <li>Paste the Redirect URL below into your app settings</li>
+                      <li>Enter your <span className="text-white">API Key</span> &amp; <span className="text-white">API Secret</span> and click Authorize</li>
+                    </ol>
+                  </div>
+
+                  {/* Redirect URI Field with Copy Button */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-surface-muted block mb-1.5">
+                      Redirect URL (Must match your Upstox App)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={upstoxRedirectUri}
+                        onChange={(e) => setUpstoxRedirectUri(e.target.value)}
+                        className="flex-1 bg-surface border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyRedirect}
+                        className="px-3 py-2 rounded-xl bg-surface border border-surface-border hover:border-surface-borderLight text-xs font-semibold text-white flex items-center gap-1.5 transition-all"
+                      >
+                        {copiedUri ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                        <span>{copiedUri ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Upstox API Key */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-surface-muted">
+                        Upstox API Key (Client ID)
+                      </label>
+                      {upstoxStatus?.apiKeyMasked && (
+                        <span className="text-[11px] text-surface-muted font-mono">
+                          Saved: {upstoxStatus.apiKeyMasked}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder={upstoxStatus?.apiKeyMasked ? 'Enter new key to update...' : 'e.g. 1a2b3c4d-5e6f-7a8b-9c0d...'}
+                      value={upstoxApiKey}
+                      onChange={(e) => setUpstoxApiKey(e.target.value)}
+                      className="w-full bg-surface border border-surface-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors font-mono"
+                    />
+                  </div>
+
+                  {/* Upstox API Secret */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-surface-muted block mb-1.5">
+                      Upstox API Secret
+                    </label>
+                    <input
+                      type="password"
+                      placeholder={upstoxStatus?.hasCredentials ? '••••••••••••••••' : 'Enter your Upstox API secret'}
+                      value={upstoxApiSecret}
+                      onChange={(e) => setUpstoxApiSecret(e.target.value)}
+                      className="w-full bg-surface border border-surface-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors font-mono"
+                    />
+                  </div>
+
+                  {/* Connect / Authorize Button */}
+                  <div className="pt-2 flex items-center justify-end gap-2.5">
+                    <button
+                      onClick={handleConnectUpstox}
+                      disabled={connectingUpstox}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-2 transition-all disabled:opacity-50"
+                    >
+                      {connectingUpstox ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowRight className="h-4 w-4" />
+                      )}
+                      <span>{upstoxStatus?.isConnected ? 'Re-authorize Upstox Session' : 'Authorize & Connect Upstox'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Status Message */}
               {upstoxMessage && (
@@ -530,22 +733,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span>{upstoxMessage.message}</span>
                 </div>
               )}
-
-              {/* Connect / Authorize Button */}
-              <div className="pt-2 flex items-center justify-end gap-2.5">
-                <button
-                  onClick={handleConnectUpstox}
-                  disabled={connectingUpstox}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {connectingUpstox ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ArrowRight className="h-4 w-4" />
-                  )}
-                  <span>{upstoxStatus?.isConnected ? 'Re-authorize Upstox Session' : 'Authorize & Connect Upstox'}</span>
-                </button>
-              </div>
             </div>
           )}
         </div>

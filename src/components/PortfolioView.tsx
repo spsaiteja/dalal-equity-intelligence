@@ -46,6 +46,7 @@ interface PortfolioViewProps {
     total: number;
   };
   onOpenOrderModal?: (stock: StockQuote, transactionType: 'BUY' | 'SELL', targetPrice?: number | string, stopLossPrice?: number | string) => void;
+  isAnalyticsToken?: boolean;
 }
 
 export const PortfolioView: React.FC<PortfolioViewProps> = ({
@@ -62,6 +63,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   alerts = [],
   alertCounts,
   onOpenOrderModal,
+  isAnalyticsToken,
 }) => {
   const [alertFilter, setAlertFilter] = useState<'ALL' | 'STOP_LOSS' | 'BOOK_PROFIT' | 'BUY_MORE' | 'CONCENTRATION_WARNING'>('ALL');
   const [showAlertsPanel, setShowAlertsPanel] = useState<boolean>(true);
@@ -206,11 +208,17 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               <span
                 className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
                   isConnected
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                    ? isAnalyticsToken
+                      ? 'bg-blue-500/10 text-blue-300 border-blue-500/25'
+                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
                     : 'bg-blue-500/10 text-blue-300 border-blue-500/25'
                 }`}
               >
-                {isConnected ? 'Live Broker Feed' : 'Sample Holdings'}
+                {isConnected
+                  ? isAnalyticsToken
+                    ? '1-Year Analytics Sync'
+                    : 'Live Broker Feed'
+                  : 'Sample Holdings'}
               </span>
             </div>
             <p className="text-[11px] text-surface-muted mt-0.5">

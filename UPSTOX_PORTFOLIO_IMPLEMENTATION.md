@@ -246,16 +246,20 @@ export interface PortfolioAuditReport {
 
 ---
 
-## 7. SEBI Compliance & Token Management
+## 7. SEBI Compliance & 1-Year Analytics Token
 
-According to SEBI (Securities and Exchange Board of India) cybersecurity regulations:
-- Brokerage API tokens **expire daily** (typically at 3:30 AM or midnight).
-- Access cannot be permanently granted without daily authentication.
-- **How DalalAI Handles This**:
-  1. Your Upstox API Key and Secret are saved securely on your local computer (`data/upstox_config.json`).
-  2. Tokens are checked with `isSessionValid(session)` before every portfolio request.
-  3. If expired, DalalAI gracefully switches back to Demo Mode and prompts you to click **"Re-authorize Session"** with 1 click.
-  4. No credentials or tokens are ever sent to third-party servers.
+Upstox provides two distinct connection models in DalalAI:
+
+### A. 1-Year Analytics Access Token (Recommended for Continuous Sync)
+- **365-Day Validity**: Upstox Developer apps generate an **Analytics Access Token** valid for 1 full year.
+- **Continuous Background Sync**: You do **not** need to log in or enter an OTP every morning. DalalAI continuously syncs your Demat holdings, average buy prices, real-time P&L, and AI Council audits.
+- **Read-Only Security**: Prevents accidental live order execution; your account cannot be compromised for unauthorized trades. If you want to place orders, use DalalAI's built-in Paper Trading mode.
+
+### B. Daily OAuth 2.0 (Full Interactive Trading)
+- According to SEBI cybersecurity regulations for trading access:
+  - Interactive trading tokens expire daily (at 3:30 AM or midnight).
+  - Used when you want live 1-click order execution through Upstox API v2.
+  - DalalAI saves your API Key and Secret locally and prompts you to re-authorize with 1 click when the daily token expires.
 
 ---
 
@@ -300,32 +304,22 @@ When clicking **"Run 5-Agent Portfolio Audit"**, DalalAI initiates a comprehensi
 
 ## 10. Step-by-Step Upstox Connection Guide
 
-Follow these steps to link your real Demat holdings:
+### Option 1: Instant 1-Year Analytics Token (Recommended)
+1. Go to [Upstox Developer Portal](https://developer.upstox.com) and open your App.
+2. Locate your **Analytics Access Token**.
+3. In DalalAI, open **Settings &rarr; Upstox Brokerage**.
+4. Paste your token into **"Analytics Access Token"** and click **"Verify & Connect (365-Day Access)"**.
+5. Your real Demat holdings will immediately populate with continuous 365-day validity!
 
-### Step 1: Create a Free Upstox Developer App
-1. Navigate to the [Upstox Developer Portal](https://developer.upstox.com) and log in with your Upstox mobile number and OTP.
-2. Click **"New App"** (free of charge for retail users).
-3. Set your **App Name** (e.g., `DalalAI Terminal`).
-4. In the **Redirect URL** field, enter:
+### Option 2: Daily OAuth 2.0 (For Live Order Placement)
+1. In your Upstox App settings on `developer.upstox.com`, set the Redirect URL:
    ```text
    http://localhost:3000/api/upstox/callback
    ```
-5. Click **Create App** and copy your:
-   - **API Key** (Client ID)
-   - **API Secret**
-
-### Step 2: Configure DalalAI
-1. In DalalAI, click the **Settings icon** (gear) in the top-right header.
-2. Select the **Upstox Brokerage** tab.
-3. Paste your **Upstox API Key** and **Upstox API Secret**.
-4. Confirm the Redirect URL displays `http://localhost:3000/api/upstox/callback` (click "Copy" to verify).
-5. Click **"Authorize & Connect Upstox"**.
-
-### Step 3: Daily Authentication
-1. You will be redirected to the official Upstox secure login page.
-2. Enter your registered mobile number, OTP, and 6-digit PIN.
-3. Once authorized, Upstox redirects back to DalalAI at `http://localhost:3000/?tab=portfolio&connected=true`.
-4. The header badge switches to 🟢 **LIVE**, and your actual Demat holdings are displayed.
+2. In DalalAI Settings, switch to **"Daily OAuth 2.0"**.
+3. Paste your **API Key** and **API Secret** and click **"Authorize & Connect Upstox"**.
+4. Log in with your Upstox mobile number, OTP, and 6-digit PIN.
+5. Upstox redirects back to DalalAI with an active daily trading session.
 
 ---
 

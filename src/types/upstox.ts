@@ -59,6 +59,15 @@ export interface UpstoxSession {
   created_at: string;
   expires_at: string;
   is_active: boolean;
+  token_type?: 'oauth' | 'analytics';
+  is_analytics_token?: boolean;
+}
+
+export interface UpstoxConfig {
+  apiKey?: string;
+  apiSecret?: string;
+  redirectUri?: string;
+  analyticsToken?: string;
 }
 
 export interface PortfolioSummary {

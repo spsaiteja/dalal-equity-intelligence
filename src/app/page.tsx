@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [isUpstoxConnected, setIsUpstoxConnected] = useState<boolean>(false);
   const [isDemoPortfolio, setIsDemoPortfolio] = useState<boolean>(true);
+  const [isAnalyticsPortfolio, setIsAnalyticsPortfolio] = useState<boolean>(false);
   const [portfolioUserName, setPortfolioUserName] = useState<string | null>(null);
   const [loadingPortfolio, setLoadingPortfolio] = useState<boolean>(false);
   const [portfolioAlerts, setPortfolioAlerts] = useState<PortfolioAlert[]>([]);
@@ -180,6 +181,7 @@ export default function Dashboard() {
         setPortfolioSummary(data.summary || null);
         setIsUpstoxConnected(Boolean(data.isConnected));
         setIsDemoPortfolio(Boolean(data.isDemoMode));
+        setIsAnalyticsPortfolio(Boolean(data.isAnalyticsToken));
         setPortfolioUserName(data.user_name || null);
         if (data.alerts) setPortfolioAlerts(data.alerts);
         if (data.alertCounts) setPortfolioAlertCounts(data.alertCounts);
@@ -526,6 +528,7 @@ export default function Dashboard() {
             alerts={portfolioAlerts}
             alertCounts={portfolioAlertCounts}
             onOpenOrderModal={handleOpenOrderModal}
+            isAnalyticsToken={isAnalyticsPortfolio}
           />
         )}
       </main>

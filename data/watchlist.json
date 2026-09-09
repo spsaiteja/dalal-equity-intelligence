@@ -1,0 +1,24 @@
+[
+  {
+    "id": "1",
+    "symbol": "HDFCBANK.NS",
+    "name": "HDFC Bank Ltd.",
+    "bucket": "Long-Term Value",
+    "addedPrice": 1650,
+    "targetPrice": 1950,
+    "stopLoss": 1540,
+    "notes": "Accumulate near multi-year valuation support",
+    "addedAt": "2026-09-07T20:04:31.023Z"
+  },
+  {
+    "id": "2",
+    "symbol": "TATAMOTORS.NS",
+    "name": "Tata Motors Ltd.",
+    "bucket": "Dip Opportunities",
+    "addedPrice": 980,
+    "targetPrice": 1200,
+    "stopLoss": 890,
+    "notes": "Monitor JLR margin expansion and EV transition",
+    "addedAt": "2026-09-07T20:04:31.023Z"
+  }
+]

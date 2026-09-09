@@ -267,9 +267,9 @@ export function verifySessionToken(token?: string | null): AuthUser | null {
       return null;
     }
 
-    // Dynamic approval check: even if session token was signed earlier, verify against current approval state
-    const isApproved = isUserApproved(payload.email);
+    // Dynamic approval check: user is approved if master admin, if already signed with approval, or on approved list
     const isAdmin = isMasterAdmin(payload.email);
+    const isApproved = isAdmin || Boolean(payload.isApproved) || isUserApproved(payload.email);
 
     return {
       id: payload.id || payload.email,

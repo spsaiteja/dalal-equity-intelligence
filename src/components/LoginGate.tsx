@@ -14,6 +14,7 @@ import {
   ArrowRight,
   ShieldCheck,
   AlertTriangle,
+  Mail,
 } from 'lucide-react';
 
 interface AuthSessionData {
@@ -199,6 +200,14 @@ export const LoginGate: React.FC<LoginGateProps> = ({ session, onRefreshSession 
                   <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                   <span>{refreshing ? 'Checking Approval Status...' : 'Check Approval Status'}</span>
                 </button>
+
+                <a
+                  href={`mailto:${session?.adminEmail || 'teja.sai42@gmail.com'}?subject=DalalAI Access Request from ${encodeURIComponent(session?.user?.name || session?.user?.email || 'User')}&body=Hi Admin,%0D%0A%0D%0APlease approve my access to Dalal AI.%0D%0AMy Email: ${encodeURIComponent(session?.user?.email || '')}%0D%0AMy Name: ${encodeURIComponent(session?.user?.name || '')}%0D%0A%0D%0AApprove at: https://dalal-equity-intelligence.vercel.app`}
+                  className="w-full py-2.5 px-4 rounded-xl bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
+                >
+                  <Mail className="h-4 w-4" />
+                  <span>Email Admin for Quick Approval</span>
+                </a>
 
                 <button
                   onClick={handleSignOut}

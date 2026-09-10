@@ -57,10 +57,10 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="border-b border-surface-border bg-surface/90 sticky top-0 z-30 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Logo & Brand */}
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
             <TrendingUp className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -68,42 +68,42 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-xl font-black tracking-tight text-white">
                 Dalal<span className="text-market-blue">AI</span>
               </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1 whitespace-nowrap">
                 <Sparkles className="h-2.5 w-2.5" /> Gemini Powered
               </span>
             </div>
-            <p className="text-[11px] text-surface-muted hidden sm:block">
+            <p className="text-[11px] text-surface-muted hidden xl:block whitespace-nowrap">
               NSE / BSE Screener &amp; Institutional AI Intelligence
             </p>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center bg-surface-card p-1 rounded-xl border border-surface-border">
+        <div className="flex items-center bg-surface-card p-1 rounded-xl border border-surface-border flex-shrink-0">
           <button
             onClick={() => setActiveTab('screener')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${
               activeTab === 'screener'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'text-surface-muted hover:text-white'
             }`}
           >
-            <SlidersHorizontal className="h-4 w-4" />
+            <SlidersHorizontal className="h-4 w-4 flex-shrink-0" />
             <span>Screener</span>
           </button>
 
           <button
             onClick={() => setActiveTab('watchlist')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all relative ${
+            className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-all relative ${
               activeTab === 'watchlist'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'text-surface-muted hover:text-white'
             }`}
           >
-            <Bookmark className="h-4 w-4" />
+            <Bookmark className="h-4 w-4 flex-shrink-0" />
             <span>Bucket List</span>
             {watchlistCount > 0 && (
-              <span className="px-1.5 py-0.2 text-[11px] font-bold rounded-full bg-indigo-500 text-white">
+              <span className="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-indigo-500 text-white">
                 {watchlistCount}
               </span>
             )}
@@ -111,13 +111,13 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setActiveTab('portfolio')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all relative ${
+            className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-all relative ${
               activeTab === 'portfolio'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'text-surface-muted hover:text-white'
             }`}
           >
-            <span className="relative flex h-2 w-2">
+            <span className="relative flex h-2 w-2 flex-shrink-0">
               {isUpstoxConnected ? (
                 <>
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400/80"></span>
               )}
             </span>
-            <span>My Portfolio</span>
+            <span>Portfolio</span>
             {isUpstoxConnected ? (
               <span className="text-[9px] uppercase font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 LIVE
@@ -152,56 +152,47 @@ export const Header: React.FC<HeaderProps> = ({
           {isAdmin && (
             <button
               onClick={() => setActiveTab('bullion')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all relative ${
+              className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-all relative ${
                 activeTab === 'bullion'
                   ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-md shadow-amber-500/30 font-bold'
                   : 'text-amber-400/90 hover:text-amber-300 hover:bg-amber-500/10'
               }`}
               title="Dubai Gold Souk live rates and personal bullion portfolio"
             >
-              <Coins className="h-4 w-4" />
+              <Coins className={`h-4 w-4 flex-shrink-0 ${activeTab === 'bullion' ? 'text-black' : 'text-amber-400'}`} />
               <span>UAE Bullion</span>
-              <span
-                className={`text-[9px] uppercase font-black px-1.5 py-0.2 rounded border ${
-                  activeTab === 'bullion'
-                    ? 'bg-black/20 text-black border-black/30'
-                    : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                }`}
-              >
-                GOLD
-              </span>
             </button>
           )}
         </div>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Pre-Market Briefing Button */}
           <button
             onClick={onOpenBriefing}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 text-amber-300 hover:text-amber-200 hover:border-amber-400/50 transition-all text-xs font-semibold shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 text-amber-300 hover:text-amber-200 hover:border-amber-400/50 transition-all text-xs font-semibold shadow-sm whitespace-nowrap"
           >
-            <Newspaper className="h-4 w-4 text-amber-400 animate-pulse" />
-            <span className="hidden md:inline">Daily AI Briefing</span>
+            <Newspaper className="h-4 w-4 text-amber-400 animate-pulse flex-shrink-0" />
+            <span className="hidden md:inline whitespace-nowrap">Daily AI Briefing</span>
           </button>
 
           {/* Dedicated Admin Access Management Button */}
           {isAdmin && (
             <button
               onClick={onOpenAccess || onOpenSettings}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200 transition-all text-xs font-bold shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200 transition-all text-xs font-bold shadow-sm whitespace-nowrap"
               title="View authorized users & approve requests"
             >
-              <Shield className="h-4 w-4 text-amber-400" />
-              <span className="hidden sm:inline">Access</span>
+              <Shield className="h-4 w-4 text-amber-400 flex-shrink-0" />
+              <span className="hidden sm:inline whitespace-nowrap">Access</span>
               {pendingApprovalsCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-black text-[10px] font-black animate-pulse">
                   {pendingApprovalsCount}
                 </span>
               )}
               {activeUsersCount > 0 && (
-                <span className="hidden md:flex items-center gap-1 ml-1 px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="hidden md:flex items-center gap-1 ml-1 px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold whitespace-nowrap">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
                   <span>{activeUsersCount} Online</span>
                 </span>
               )}

@@ -129,27 +129,42 @@ export async function syncAccessRecordsFromVault(force = false): Promise<void> {
       const data = JSON.parse(raw);
       if (Array.isArray(data.approved)) {
         const localApproved = getApprovedUsers();
+        let changed = false;
         for (const item of data.approved) {
           if (item?.email && !localApproved.some((a) => a.email.toLowerCase() === item.email.toLowerCase())) {
             localApproved.push(item);
+            changed = true;
           }
         }
-        saveApprovedUsers(localApproved, false);
+        if (changed) {
+          saveApprovedUsers(localApproved, false);
+        }
       }
 
       if (Array.isArray(data.pending)) {
         const localPending = getPendingUsers();
+        let changed = false;
         for (const item of data.pending) {
           if (item?.email && !localPending.some((p) => p.email.toLowerCase() === item.email.toLowerCase())) {
             localPending.push(item);
+            changed = true;
           }
         }
-        savePendingUsers(localPending, false);
+        if (changed) {
+          savePendingUsers(localPending, false);
+        }
+      }
+    } else {
+      // If Cloud Vault has no records yet, upload all existing local and environment-approved users!
+      const currentApproved = getApprovedUsers();
+      const currentPending = getPendingUsers();
+      if (currentApproved.length > 0 || currentPending.length > 0) {
+        await syncAccessRecordsToVault();
       }
     }
     isVaultAccessSynced = true;
   } catch (err) {
-    console.warn('Could not sync access records from Drive Vault:', err);
+    console.warn('Could not sync access records from Cloud Vault:', err);
   }
 }
 

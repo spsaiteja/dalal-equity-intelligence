@@ -385,17 +385,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               directData?.errors?.[0]?.message ||
               directData?.message ||
               '';
-            if (directErrMsg.includes('static IP')) {
+            const errorCode = directData?.errors?.[0]?.errorCode || directData?.errors?.[0]?.error_code;
+
+            // When Static IP is updated in Upstox, Upstox automatically invalidates previous tokens!
+            if (errorCode === 'UDAPI100050' || directErrMsg.toLowerCase().includes('invalid token')) {
+              setUpstoxMessage({
+                success: false,
+                message: 'Fresh Token Required: Upstox automatically revoked your previous token when you updated your Static IP today. Please go to developer.upstox.com -> My Apps -> Analytics tab -> click "Generate Token", paste the new token below, and click Connect!',
+              });
+              return;
+            }
+
+            if (directErrMsg.includes('static IP') || errorCode === 'UDAPI100069') {
               setUpstoxMessage({
                 success: false,
                 message: `Static IP Required: Please whitelist your Public IP (${publicIp || 'shown above'}) in developer.upstox.com -> My Apps -> Primary Static IP. Once added, click Connect!`,
               });
               return;
             }
-            throw new Error(directErrMsg || 'Direct browser verification rejected by Upstox');
+
+            setUpstoxMessage({
+              success: false,
+              message: directErrMsg || 'Direct browser verification rejected by Upstox. Please verify your token.',
+            });
+            return;
           }
         } catch (directErr: any) {
           console.warn('Direct browser Upstox verification error:', directErr);
+          if (directErr.message?.toLowerCase().includes('invalid token')) {
+            setUpstoxMessage({
+              success: false,
+              message: 'Fresh Token Required: Upstox revoked previous tokens when your Static IP changed. Please generate a new 1-Year Analytics Token at developer.upstox.com -> My Apps -> Analytics.',
+            });
+            return;
+          }
           if (directErr.message?.includes('static IP')) {
             setUpstoxMessage({
               success: false,
@@ -403,6 +426,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             });
             return;
           }
+          setUpstoxMessage({
+            success: false,
+            message: directErr.message || 'Direct Upstox verification failed.',
+          });
+          return;
         }
       }
 

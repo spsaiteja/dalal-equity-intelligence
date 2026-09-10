@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   X,
   Key,
@@ -20,6 +20,12 @@ import {
   Trash2,
   Clock,
   AlertCircle,
+  Activity,
+  Smartphone,
+  Monitor,
+  Tablet,
+  Zap,
+  Search,
 } from 'lucide-react';
 
 interface PendingUserRecord {
@@ -34,6 +40,27 @@ interface ApprovedUserRecord {
   name: string;
   approvedAt: string;
   approvedBy: string;
+}
+
+interface UserActivityItem {
+  email: string;
+  name: string;
+  picture?: string;
+  role: 'admin' | 'user';
+  firstSeenAt: string;
+  lastActiveAt: string;
+  totalVisits: number;
+  deviceType?: 'Mobile' | 'Tablet' | 'Desktop';
+  isOnline: boolean;
+  status: 'online' | 'today' | 'offline';
+  relativeTime: string;
+}
+
+interface ActivityStatsData {
+  totalUsers: number;
+  activeNow: number;
+  activeToday: number;
+  totalVisits: number;
 }
 
 interface SettingsModalProps {
@@ -94,32 +121,87 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [upstoxMessage, setUpstoxMessage] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedUri, setCopiedUri] = useState(false);
 
-  // Access Management state (Admin only)
+  // Access Management & Usage state (Admin only)
   const [pendingUsers, setPendingUsers] = useState<PendingUserRecord[]>([]);
   const [approvedUsers, setApprovedUsers] = useState<ApprovedUserRecord[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [preapproveInput, setPreapproveInput] = useState('');
   const [adminEmail, setAdminEmail] = useState('teja.sai42@gmail.com');
   const [accessMessage, setAccessMessage] = useState<{ success: boolean; message: string } | null>(null);
+  const [usageStats, setUsageStats] = useState<ActivityStatsData | null>(null);
+  const [activityUsers, setActivityUsers] = useState<UserActivityItem[]>([]);
+  const [usageSearchQuery, setUsageSearchQuery] = useState('');
 
-  // Fetch Users for Admin
+  // Fetch Users and Usage Analytics for Admin
   const loadUsersList = useCallback(async () => {
     if (!isAdmin) return;
     setLoadingUsers(true);
     try {
-      const res = await fetch('/api/auth/users');
-      const data = await res.json();
-      if (data.success) {
-        setPendingUsers(data.pendingUsers || []);
-        setApprovedUsers(data.approvedUsers || []);
-        if (data.adminEmail) setAdminEmail(data.adminEmail);
+      const [usersRes, usageRes] = await Promise.allSettled([
+        fetch('/api/auth/users').then((r) => r.json()),
+        fetch('/api/auth/usage').then((r) => r.json()),
+      ]);
+
+      if (usersRes.status === 'fulfilled' && usersRes.value?.success) {
+        setPendingUsers(usersRes.value.pendingUsers || []);
+        setApprovedUsers(usersRes.value.approvedUsers || []);
+        if (usersRes.value.adminEmail) setAdminEmail(usersRes.value.adminEmail);
+      }
+
+      if (usageRes.status === 'fulfilled' && usageRes.value?.success) {
+        setUsageStats(usageRes.value.stats || null);
+        setActivityUsers(usageRes.value.users || []);
       }
     } catch (err) {
-      console.error('Failed to load user access list:', err);
+      console.error('Failed to load user access & usage list:', err);
     } finally {
       setLoadingUsers(false);
     }
   }, [isAdmin]);
+
+  // Compute filtered active/approved users for directory table
+  const filteredUsersList = useMemo(() => {
+    let list: UserActivityItem[] =
+      activityUsers.length > 0
+        ? [...activityUsers]
+        : [
+            {
+              email: adminEmail,
+              name: 'Master Admin',
+              role: 'admin' as const,
+              firstSeenAt: new Date().toISOString(),
+              lastActiveAt: new Date().toISOString(),
+              totalVisits: 1,
+              deviceType: 'Desktop' as const,
+              isOnline: true,
+              status: 'online' as const,
+              relativeTime: 'Just now',
+            },
+            ...approvedUsers
+              .filter((u) => u.email.toLowerCase() !== adminEmail.toLowerCase())
+              .map((u) => ({
+                email: u.email,
+                name: u.name || u.email.split('@')[0],
+                role: 'user' as const,
+                firstSeenAt: u.approvedAt,
+                lastActiveAt: u.approvedAt,
+                totalVisits: 0,
+                deviceType: 'Desktop' as const,
+                isOnline: false,
+                status: 'offline' as const,
+                relativeTime: new Date(u.approvedAt).toLocaleDateString(),
+              })),
+          ];
+
+    if (usageSearchQuery.trim()) {
+      const q = usageSearchQuery.toLowerCase();
+      list = list.filter(
+        (u) => u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [activityUsers, approvedUsers, adminEmail, usageSearchQuery]);
 
   // Sync state when modal opens
   useEffect(() => {
@@ -452,7 +534,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-surface-card border border-surface-border rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className={`bg-surface-card border border-surface-border rounded-2xl w-full ${activeTab === 'access' ? 'max-w-3xl' : 'max-w-xl'} overflow-hidden shadow-2xl flex flex-col max-h-[90vh] transition-all duration-200`}>
         {/* Header */}
         <div className="p-5 border-b border-surface-border flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -524,7 +606,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               }`}
             >
               <Users className="h-4 w-4 text-amber-400" />
-              <span>Access Management</span>
+              <span>Access &amp; Usage</span>
+              {usageStats?.activeNow ? (
+                <span className="flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{usageStats.activeNow}</span>
+                </span>
+              ) : null}
               {pendingUsers.length > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-black text-[10px] font-black animate-pulse">
                   {pendingUsers.length}
@@ -910,50 +998,84 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: ACCESS MANAGEMENT (ADMIN ONLY) */}
+          {/* TAB 3: ACCESS & USAGE ANALYTICS (ADMIN ONLY) */}
           {activeTab === 'access' && isAdmin && (
             <div className="space-y-5">
               {/* Admin Banner */}
-              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
-                <Shield className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <div className="font-bold text-amber-300 flex items-center gap-2">
-                    <span>Terminal Gatekeeper Active</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 border border-amber-500/30">
-                      Zero DB Whitelist
-                    </span>
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <div className="font-bold text-amber-300 flex items-center gap-2">
+                      <span>Institutional Gatekeeper &amp; Telemetry</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                        Upstash Cloud Vault
+                      </span>
+                    </div>
+                    <p className="text-amber-200/80 mt-1 leading-relaxed">
+                      Master Administrator: <strong className="font-mono text-white">{adminEmail}</strong>.
+                      Live active sessions and all-time user engagement are continuously tracked below.
+                    </p>
                   </div>
-                  <p className="text-amber-200/80 mt-1 leading-relaxed">
-                    Master Administrator: <strong className="font-mono text-white">{adminEmail}</strong>.
-                    Only users approved below can access the DalalAI screener and share your server-side Gemini API key.
-                  </p>
                 </div>
+
+                <button
+                  onClick={loadUsersList}
+                  disabled={loadingUsers}
+                  className="px-2.5 py-1 rounded-lg bg-surface border border-surface-border text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1 shrink-0 transition-colors"
+                  title="Refresh Telemetry"
+                >
+                  <RefreshCw className={`h-3 w-3 ${loadingUsers ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
               </div>
 
-              {/* Pre-Approve Email Form */}
-              <div className="bg-surface border border-surface-border rounded-xl p-4 space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4 text-blue-400" />
-                  <span className="text-xs font-bold text-white">Pre-Approve an Email Address</span>
+              {/* TOP 4 USAGE STATS CARDS */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-surface border border-surface-border rounded-xl p-3 shadow-sm">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-surface-muted block">
+                    Total Users
+                  </span>
+                  <div className="text-xl font-black text-white flex items-center gap-1.5 mt-1">
+                    <Users className="h-4 w-4 text-blue-400" />
+                    <span>{usageStats?.totalUsers ?? (approvedUsers.length + 1)}</span>
+                  </div>
+                  <span className="text-[10px] text-surface-muted">All-Time Registered</span>
                 </div>
-                <form onSubmit={handlePreapprove} className="flex gap-2">
-                  <input
-                    type="email"
-                    placeholder="colleague@example.com"
-                    value={preapproveInput}
-                    onChange={(e) => setPreapproveInput(e.target.value)}
-                    className="flex-1 bg-surface-card border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition-all"
-                  >
-                    Pre-Approve
-                  </button>
-                </form>
-                <p className="text-[11px] text-surface-muted">
-                  Pre-approved emails will instantly bypass the pending gate upon their first Google sign-in.
-                </p>
+
+                <div className="bg-surface border border-emerald-500/30 rounded-xl p-3 bg-emerald-500/5 shadow-sm">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    Online Right Now
+                  </span>
+                  <div className="text-xl font-black text-white flex items-center gap-1.5 mt-1">
+                    <Activity className="h-4 w-4 text-emerald-400" />
+                    <span>{usageStats?.activeNow ?? 1}</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-300">Active &lt; 5m</span>
+                </div>
+
+                <div className="bg-surface border border-surface-border rounded-xl p-3 shadow-sm">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-surface-muted block">
+                    Active Today
+                  </span>
+                  <div className="text-xl font-black text-white flex items-center gap-1.5 mt-1">
+                    <Clock className="h-4 w-4 text-amber-400" />
+                    <span>{usageStats?.activeToday ?? 1}</span>
+                  </div>
+                  <span className="text-[10px] text-surface-muted">Logged in &lt; 24h</span>
+                </div>
+
+                <div className="bg-surface border border-surface-border rounded-xl p-3 shadow-sm">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-surface-muted block">
+                    Total Sessions
+                  </span>
+                  <div className="text-xl font-black text-white flex items-center gap-1.5 mt-1">
+                    <Zap className="h-4 w-4 text-indigo-400" />
+                    <span>{usageStats?.totalVisits ?? 1}</span>
+                  </div>
+                  <span className="text-[10px] text-surface-muted">Terminal Visits</span>
+                </div>
               </div>
 
               {/* Access Status Message */}
@@ -974,27 +1096,154 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               )}
 
+              {/* SECTION: LIVE USER DIRECTORY & ACTIVITY */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      User Directory &amp; Live Activity ({filteredUsersList.length})
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="h-3 w-3 text-surface-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search name or email..."
+                      value={usageSearchQuery}
+                      onChange={(e) => setUsageSearchQuery(e.target.value)}
+                      className="bg-surface border border-surface-border rounded-lg pl-7 pr-2.5 py-1 text-[11px] text-white placeholder-surface-muted focus:outline-none focus:border-blue-500 w-48"
+                    />
+                  </div>
+                </div>
+
+                {/* Users List Table */}
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {filteredUsersList.map((u) => {
+                    const isMaster = u.email.toLowerCase() === adminEmail.toLowerCase();
+                    return (
+                      <div
+                        key={u.email}
+                        className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                          u.isOnline
+                            ? 'bg-emerald-500/5 border-emerald-500/30'
+                            : 'bg-surface border-surface-border'
+                        }`}
+                      >
+                        {/* User Info */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          {u.picture ? (
+                            <img
+                              src={u.picture}
+                              alt={u.name}
+                              className="h-8 w-8 rounded-lg object-cover border border-surface-border shrink-0"
+                            />
+                          ) : (
+                            <div
+                              className={`h-8 w-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 border ${
+                                isMaster
+                                  ? 'bg-amber-500/20 border-amber-500/30 text-amber-300'
+                                  : 'bg-blue-600/20 border-blue-500/30 text-blue-300'
+                              }`}
+                            >
+                              {u.name ? u.name.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                          )}
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-white truncate max-w-[150px] sm:max-w-[200px]">
+                                {u.name || u.email.split('@')[0]}
+                              </span>
+                              {isMaster ? (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-black uppercase">
+                                  Owner
+                                </span>
+                              ) : (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold uppercase">
+                                  Approved
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-surface-muted font-mono truncate max-w-[180px] sm:max-w-[260px]">
+                              {u.email}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Telemetry & Device */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          {/* Live Status Badge */}
+                          <div className="flex flex-col items-end text-right">
+                            {u.isOnline ? (
+                              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                <span>Online</span>
+                              </span>
+                            ) : u.status === 'today' ? (
+                              <span className="flex items-center gap-1 text-[11px] font-medium text-amber-400">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                                <span>Active Today</span>
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-[11px] font-medium text-surface-muted">
+                                <span className="h-1.5 w-1.5 rounded-full bg-surface-muted" />
+                                <span>Offline</span>
+                              </span>
+                            )}
+                            <span className="text-[10px] text-surface-muted">
+                              {u.relativeTime || 'Recently'}
+                            </span>
+                          </div>
+
+                          {/* Device & Visits Pill */}
+                          <div className="hidden sm:flex flex-col items-end text-right">
+                            <span className="text-[10px] text-surface-muted flex items-center gap-1">
+                              {u.deviceType === 'Mobile' ? (
+                                <Smartphone className="h-3 w-3 text-cyan-400" />
+                              ) : u.deviceType === 'Tablet' ? (
+                                <Tablet className="h-3 w-3 text-indigo-400" />
+                              ) : (
+                                <Monitor className="h-3 w-3 text-blue-400" />
+                              )}
+                              <span>{u.deviceType || 'Desktop'}</span>
+                            </span>
+                            <span className="text-[10px] text-surface-muted font-mono">
+                              {u.totalVisits || 1} {u.totalVisits === 1 ? 'visit' : 'visits'}
+                            </span>
+                          </div>
+
+                          {/* Revoke Action */}
+                          {!isMaster && (
+                            <button
+                              onClick={() => handleRevokeUser(u.email)}
+                              className="px-2 py-1 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-all ml-1"
+                              title="Revoke access"
+                            >
+                              Revoke
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* SECTION: PENDING REQUESTS */}
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 pt-2 border-t border-surface-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-amber-400" />
                     <span className="text-xs font-bold text-white uppercase tracking-wider">
-                      Pending Requests ({pendingUsers.length})
+                      Pending Approvals ({pendingUsers.length})
                     </span>
                   </div>
-                  <button
-                    onClick={loadUsersList}
-                    disabled={loadingUsers}
-                    className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                  >
-                    <RefreshCw className={`h-3 w-3 ${loadingUsers ? 'animate-spin' : ''}`} />
-                    <span>Refresh</span>
-                  </button>
                 </div>
 
                 {pendingUsers.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-surface border border-surface-border text-center text-xs text-surface-muted">
+                  <div className="p-3.5 rounded-xl bg-surface border border-surface-border text-center text-xs text-surface-muted">
                     No pending approval requests. When new users attempt Google login, they will be listed here.
                   </div>
                 ) : (
@@ -1046,57 +1295,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 )}
               </div>
 
-              {/* SECTION: APPROVED USERS */}
-              <div className="space-y-2.5 pt-2">
+              {/* Pre-Approve Email Form */}
+              <div className="bg-surface border border-surface-border rounded-xl p-3.5 space-y-2">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
-                    Authorized Users ({approvedUsers.length})
-                  </span>
+                  <UserPlus className="h-4 w-4 text-blue-400" />
+                  <span className="text-xs font-bold text-white">Pre-Approve an Email Address</span>
                 </div>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {/* Master Admin Entry */}
-                  <div className="p-3 rounded-xl bg-surface border border-surface-border flex items-center justify-between gap-2">
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-2">
-                        <span>Master Administrator</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-black uppercase">
-                          Permanent
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-surface-muted font-mono">{adminEmail}</div>
-                    </div>
-                    <span className="text-[10px] text-emerald-400 font-bold">Owner</span>
-                  </div>
-
-                  {approvedUsers.map((u) => {
-                    const isMaster = u.email.toLowerCase() === adminEmail.toLowerCase();
-                    if (isMaster) return null; // already shown above
-
-                    return (
-                      <div
-                        key={u.email}
-                        className="p-3 rounded-xl bg-surface border border-surface-border flex items-center justify-between gap-2"
-                      >
-                        <div>
-                          <div className="text-xs font-bold text-white">{u.name || u.email.split('@')[0]}</div>
-                          <div className="text-[11px] text-surface-muted font-mono">{u.email}</div>
-                          <div className="text-[10px] text-surface-muted">
-                            Approved by {u.approvedBy} • {new Date(u.approvedAt).toLocaleDateString()}
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => handleRevokeUser(u.email)}
-                          className="px-2.5 py-1 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-all"
-                        >
-                          Revoke
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                <form onSubmit={handlePreapprove} className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="colleague@example.com"
+                    value={preapproveInput}
+                    onChange={(e) => setPreapproveInput(e.target.value)}
+                    className="flex-1 bg-surface-card border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition-all"
+                  >
+                    Pre-Approve
+                  </button>
+                </form>
+                <p className="text-[11px] text-surface-muted">
+                  Pre-approved emails will instantly bypass the pending gate upon their first Google sign-in.
+                </p>
               </div>
             </div>
           )}

@@ -34,6 +34,7 @@ interface HeaderProps {
   user?: AuthUserHeader | null;
   isAdmin?: boolean;
   pendingApprovalsCount?: number;
+  activeUsersCount?: number;
   onSignOut?: () => void;
 }
 
@@ -50,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   user,
   isAdmin = false,
   pendingApprovalsCount = 0,
+  activeUsersCount = 0,
   onSignOut,
 }) => {
   return (
@@ -169,6 +171,12 @@ export const Header: React.FC<HeaderProps> = ({
               {pendingApprovalsCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-black text-[10px] font-black animate-pulse">
                   {pendingApprovalsCount}
+                </span>
+              )}
+              {activeUsersCount > 0 && (
+                <span className="hidden md:flex items-center gap-1 ml-1 px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{activeUsersCount} Online</span>
                 </span>
               )}
             </button>

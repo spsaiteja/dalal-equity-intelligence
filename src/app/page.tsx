@@ -16,7 +16,7 @@ import { PortfolioAuditModal } from '@/components/PortfolioAuditModal';
 import { OrderModal } from '@/components/OrderModal';
 import { LoginGate } from '@/components/LoginGate';
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Shield, Users, Activity, Clock, Zap, ArrowRight } from 'lucide-react';
 import {
   StockQuote,
   MarketIndex,
@@ -128,6 +128,33 @@ export default function Dashboard() {
       setLoadingSession(false);
     }
   }, []);
+
+  // Real-time User Activity & Telemetry Stats
+  const [usageStats, setUsageStats] = useState<{
+    totalUsers: number;
+    activeNow: number;
+    activeToday: number;
+    totalVisits: number;
+  } | null>(null);
+
+  // Send Heartbeat on active session and poll every 90 seconds
+  useEffect(() => {
+    if (!session?.isApproved) return;
+
+    const pingHeartbeat = async () => {
+      try {
+        const res = await fetch('/api/auth/heartbeat', { method: 'POST' });
+        const data = await res.json();
+        if (data.success && data.stats) {
+          setUsageStats(data.stats);
+        }
+      } catch {}
+    };
+
+    pingHeartbeat();
+    const interval = setInterval(pingHeartbeat, 90 * 1000);
+    return () => clearInterval(interval);
+  }, [session?.isApproved]);
 
   useEffect(() => {
     loadSession();
@@ -605,6 +632,7 @@ export default function Dashboard() {
         user={session?.user}
         isAdmin={Boolean(session?.isAdmin)}
         pendingApprovalsCount={session?.pendingCount || 0}
+        activeUsersCount={usageStats?.activeNow || 1}
         onSignOut={async () => {
           await fetch('/api/auth/logout', { method: 'POST' });
           window.location.reload();
@@ -613,6 +641,87 @@ export default function Dashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Master Admin Usage & Telemetry Dashboard Ribbon */}
+        {session?.isAdmin && usageStats && (
+          <div className="mb-6 p-4 rounded-2xl bg-surface-card border border-surface-border shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-surface-border/60">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Shield className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      Terminal Usage &amp; Telemetry
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 font-semibold">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live Telemetry
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-surface-muted">
+                    Total user footprint and real-time concurrent active sessions
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => handleOpenSettings('access')}
+                className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-surface border border-surface-border hover:border-surface-borderLight text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1.5 transition-all shadow-sm"
+              >
+                <span>Manage Users &amp; Directory</span>
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+
+            {/* 4 Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 pt-3">
+              <div className="bg-surface border border-surface-border/80 rounded-xl p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-surface-muted block">
+                  Total Users
+                </span>
+                <div className="text-lg sm:text-xl font-black text-white flex items-center gap-1.5 mt-0.5">
+                  <Users className="h-4 w-4 text-blue-400" />
+                  <span>{usageStats.totalUsers}</span>
+                  <span className="text-[11px] font-normal text-surface-muted">registered</span>
+                </div>
+              </div>
+
+              <div className="bg-surface border border-emerald-500/30 rounded-xl p-3 bg-emerald-500/5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" /> Online Right Now
+                </span>
+                <div className="text-lg sm:text-xl font-black text-white flex items-center gap-1.5 mt-0.5">
+                  <Activity className="h-4 w-4 text-emerald-400" />
+                  <span>{usageStats.activeNow}</span>
+                  <span className="text-[11px] font-semibold text-emerald-300">active now</span>
+                </div>
+              </div>
+
+              <div className="bg-surface border border-surface-border/80 rounded-xl p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-surface-muted block">
+                  Active Today
+                </span>
+                <div className="text-lg sm:text-xl font-black text-white flex items-center gap-1.5 mt-0.5">
+                  <Clock className="h-4 w-4 text-amber-400" />
+                  <span>{usageStats.activeToday}</span>
+                  <span className="text-[11px] font-normal text-surface-muted">in 24h</span>
+                </div>
+              </div>
+
+              <div className="bg-surface border border-surface-border/80 rounded-xl p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-surface-muted block">
+                  Total App Visits
+                </span>
+                <div className="text-lg sm:text-xl font-black text-white flex items-center gap-1.5 mt-0.5">
+                  <Zap className="h-4 w-4 text-indigo-400" />
+                  <span>{usageStats.totalVisits}</span>
+                  <span className="text-[11px] font-normal text-surface-muted">sessions</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Real-time Market Indices */}
         <MarketIndices
           indices={indices}

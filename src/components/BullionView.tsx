@@ -929,16 +929,16 @@ export const BullionView: React.FC = () => {
 
       {/* Add / Edit Bullion Purchase Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-          <div className="bg-surface-card border border-surface-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-scale-in">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-surface-border flex items-center justify-between bg-gradient-to-r from-amber-500/10 to-transparent">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-surface-card border border-surface-border rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden animate-scale-in">
+            {/* Modal Header (Pinned) */}
+            <div className="p-4 sm:p-5 border-b border-surface-border flex items-center justify-between bg-gradient-to-r from-amber-500/10 to-transparent flex-shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
                   <Coins className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">
+                  <h3 className="text-sm sm:text-base font-bold text-white">
                     {editingHolding ? 'Edit Bullion Holding' : 'Record Bullion Purchase'}
                   </h3>
                   <p className="text-[11px] text-surface-muted">
@@ -949,224 +949,240 @@ export const BullionView: React.FC = () => {
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-1.5 rounded-lg text-surface-muted hover:text-white hover:bg-surface-border/40 transition-colors"
+                title="Close modal"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
-              {/* Metal Type Selector */}
-              <div>
-                <label className="block font-semibold text-surface-muted mb-1.5">Select Metal Purity</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['GOLD_24K', 'GOLD_22K', 'GOLD_21K', 'GOLD_18K', 'SILVER_999'] as BullionMetalType[]).map(
-                    (type) => {
-                      const meta = METAL_LABELS[type];
-                      const isSelected = formData.metalType === type;
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setFormData((prev) => ({ ...prev, metalType: type }))}
-                          className={`p-2.5 rounded-xl border text-left transition-all ${
-                            isSelected
-                              ? 'border-amber-500 bg-amber-500/15 text-white shadow-sm ring-1 ring-amber-500'
-                              : 'border-surface-border bg-surface/50 text-surface-muted hover:border-surface-borderLight'
-                          }`}
-                        >
-                          <div className="font-bold">{meta.title}</div>
-                          <div className="text-[10px] opacity-75">{meta.purity}</div>
-                        </button>
-                      );
-                    }
-                  )}
-                </div>
-              </div>
-
-              {/* Item / Description Name */}
-              <div>
-                <label className="block font-semibold text-surface-muted mb-1">
-                  Item Description (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 10g Emirates Mint 24K Bar, Malabar 22K Bangle, 1kg Silver Ingot"
-                  value={formData.itemName}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, itemName: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white placeholder-surface-muted/50 focus:outline-none focus:border-amber-500 transition-colors text-xs"
-                />
-              </div>
-
-              {/* Quantity & Unit */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block font-semibold text-surface-muted mb-1">
-                    Weight / Quantity <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    placeholder="e.g. 10 or 1"
-                    value={formData.inputWeight}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, inputWeight: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white placeholder-surface-muted/50 focus:outline-none focus:border-amber-500 transition-colors text-xs font-bold"
-                  />
-                </div>
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+              {/* Scrollable Form Body */}
+              <div className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto flex-1">
+                {/* Metal Type Selector */}
                 <div>
-                  <label className="block font-semibold text-surface-muted mb-1">Unit</label>
-                  <select
-                    value={formData.unit}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        unit: e.target.value as 'grams' | 'tolas' | 'oz' | 'kg',
-                      }))
-                    }
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white focus:outline-none focus:border-amber-500 transition-colors text-xs font-semibold"
-                  >
-                    <option value="grams">Grams (g)</option>
-                    <option value="tolas">Tolas (11.66g)</option>
-                    <option value="oz">Troy Ounces (oz)</option>
-                    <option value="kg">Kilograms (kg)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Buy Price Entry */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="font-semibold text-surface-muted">
-                    Buy Price <span className="text-rose-400">*</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          priceMode: prev.priceMode === 'per_gram' ? 'total' : 'per_gram',
-                        }))
+                  <label className="block font-semibold text-surface-muted mb-1.5">Select Metal Purity</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {(['GOLD_24K', 'GOLD_22K', 'GOLD_21K', 'GOLD_18K', 'SILVER_999'] as BullionMetalType[]).map(
+                      (type) => {
+                        const meta = METAL_LABELS[type];
+                        const isSelected = formData.metalType === type;
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, metalType: type }))}
+                            className={`p-2.5 rounded-xl border text-left transition-all ${
+                              isSelected
+                                ? 'border-amber-500 bg-amber-500/15 text-white shadow-sm ring-1 ring-amber-500'
+                                : 'border-surface-border bg-surface/50 text-surface-muted hover:border-surface-borderLight'
+                            }`}
+                          >
+                            <div className="font-bold">{meta.title}</div>
+                            <div className="text-[10px] opacity-75">{meta.purity}</div>
+                          </button>
+                        );
                       }
-                      className="text-[11px] text-blue-400 hover:underline"
-                    >
-                      {formData.priceMode === 'per_gram' ? 'Switch to Total AED' : 'Switch to AED/gram'}
-                    </button>
-                    {rates && (
-                      <button
-                        type="button"
-                        onClick={handleUseCurrentLivePrice}
-                        className="text-[11px] font-bold text-amber-400 hover:underline flex items-center gap-0.5"
-                      >
-                        <Sparkles className="h-3 w-3" /> Use Today&apos;s UAE CMP
-                      </button>
                     )}
                   </div>
                 </div>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    placeholder={
-                      formData.priceMode === 'per_gram'
-                        ? 'e.g. 516.10 (AED per gram)'
-                        : 'e.g. 5161.00 (Total AED paid)'
-                    }
-                    value={formData.inputPrice}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, inputPrice: e.target.value }))}
-                    className="w-full px-3 py-2 pr-16 rounded-xl bg-surface border border-surface-border text-white placeholder-surface-muted/50 focus:outline-none focus:border-amber-500 transition-colors text-xs font-bold"
-                  />
-                  <span className="absolute right-3 top-2.5 text-surface-muted text-[11px] font-semibold">
-                    {formData.priceMode === 'per_gram' ? 'AED / g' : 'Total AED'}
-                  </span>
-                </div>
-              </div>
 
-              {/* Purchase Date */}
-              <div>
-                <label className="block font-semibold text-surface-muted mb-1">
-                  Purchase Date <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
+                {/* Item / Description Name */}
+                <div>
+                  <label className="block font-semibold text-surface-muted mb-1">
+                    Item Description (Optional)
+                  </label>
                   <input
-                    type="date"
-                    required
-                    value={formData.buyDate}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, buyDate: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white focus:outline-none focus:border-amber-500 transition-colors text-xs"
+                    type="text"
+                    placeholder="e.g. 10g Emirates Mint 24K Bar, Malabar 22K Bangle, 1kg Silver Ingot"
+                    value={formData.itemName}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, itemName: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white placeholder-surface-muted/50 focus:outline-none focus:border-amber-500 transition-colors text-xs"
                   />
                 </div>
-              </div>
 
-              {/* Notes / Dealer / Invoice */}
-              <div>
-                <label className="block font-semibold text-surface-muted mb-1">
-                  Dealer / Jeweler / Notes
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Dubai Gold Souk, Joyalukkas, Malabar Gold, Invoice #54921"
-                  value={formData.notes}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white placeholder-surface-muted/50 focus:outline-none focus:border-amber-500 transition-colors text-xs"
-                />
-              </div>
+                {/* Quantity & Unit */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block font-semibold text-surface-muted mb-1">
+                      Weight / Quantity <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      placeholder="e.g. 10 or 1"
+                      value={formData.inputWeight}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, inputWeight: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white placeholder-surface-muted/50 focus:outline-none focus:border-amber-500 transition-colors text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-surface-muted mb-1">Unit</label>
+                    <select
+                      value={formData.unit}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          unit: e.target.value as 'grams' | 'tolas' | 'oz' | 'kg',
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white focus:outline-none focus:border-amber-500 transition-colors text-xs font-semibold"
+                    >
+                      <option value="grams">Grams (g)</option>
+                      <option value="tolas">Tolas (11.66g)</option>
+                      <option value="oz">Troy Ounces (oz)</option>
+                      <option value="kg">Kilograms (kg)</option>
+                    </select>
+                  </div>
+                </div>
 
-              {/* Live Preview Card */}
-              {computedWeightGrams > 0 && computedPricePerGramAED > 0 && (
-                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] space-y-1.5 text-amber-200">
-                  <div className="flex items-center justify-between font-bold">
-                    <span>Effective Weight:</span>
-                    <span>
-                      {computedWeightGrams.toFixed(2)}g{' '}
-                      <span className="opacity-80 font-normal">
-                        ({(computedWeightGrams / GRAMS_PER_TOLA).toFixed(2)} tolas)
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between font-bold">
-                    <span>Effective Rate:</span>
-                    <span>{computedPricePerGramAED.toFixed(2)} AED / g</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs font-black text-white pt-1 border-t border-amber-500/20">
-                    <span>Total Purchase Cost:</span>
-                    <span className="text-amber-300">
-                      {(computedWeightGrams * computedPricePerGramAED).toFixed(2)} AED{' '}
+                {/* Buy Price Entry */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-surface-muted">
+                      Buy Price <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            priceMode: prev.priceMode === 'per_gram' ? 'total' : 'per_gram',
+                          }))
+                        }
+                        className="text-[11px] text-blue-400 hover:underline"
+                      >
+                        {formData.priceMode === 'per_gram' ? 'Switch to Total AED' : 'Switch to AED/gram'}
+                      </button>
                       {rates && (
-                        <span className="text-surface-muted font-normal text-[10px]">
-                          (≈ ₹
-                          {(
-                            computedWeightGrams *
-                            computedPricePerGramAED *
-                            rates.aedInrRate
-                          ).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                          )
-                        </span>
+                        <button
+                          type="button"
+                          onClick={handleUseCurrentLivePrice}
+                          className="text-[11px] font-bold text-amber-400 hover:underline flex items-center gap-0.5"
+                        >
+                          <Sparkles className="h-3 w-3" /> Use Today&apos;s UAE CMP
+                        </button>
                       )}
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      placeholder={
+                        formData.priceMode === 'per_gram'
+                          ? 'e.g. 516.10 (AED per gram)'
+                          : 'e.g. 5161.00 (Total AED paid)'
+                      }
+                      value={formData.inputPrice}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, inputPrice: e.target.value }))}
+                      className="w-full px-3 py-2 pr-16 rounded-xl bg-surface border border-surface-border text-white placeholder-surface-muted/50 focus:outline-none focus:border-amber-500 transition-colors text-xs font-bold"
+                    />
+                    <span className="absolute right-3 top-2.5 text-surface-muted text-[11px] font-semibold">
+                      {formData.priceMode === 'per_gram' ? 'AED / g' : 'Total AED'}
                     </span>
                   </div>
                 </div>
-              )}
 
-              {/* Action Buttons */}
-              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-surface-border">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-surface-border text-surface-muted hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-bold shadow-md shadow-amber-500/20 transition-all disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {submitting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                  <span>{editingHolding ? 'Update Holding' : 'Save Holding'}</span>
-                </button>
+                {/* Purchase Date */}
+                <div>
+                  <label className="block font-semibold text-surface-muted mb-1">
+                    Purchase Date <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      required
+                      value={formData.buyDate}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, buyDate: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white focus:outline-none focus:border-amber-500 transition-colors text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Notes / Dealer / Invoice */}
+                <div>
+                  <label className="block font-semibold text-surface-muted mb-1">
+                    Dealer / Jeweler / Notes
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dubai Gold Souk, Joyalukkas, Malabar Gold, Invoice #54921"
+                    value={formData.notes}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-border text-white placeholder-surface-muted/50 focus:outline-none focus:border-amber-500 transition-colors text-xs"
+                  />
+                </div>
+
+                {/* Live Preview Card */}
+                {computedWeightGrams > 0 && computedPricePerGramAED > 0 && (
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] space-y-1.5 text-amber-200">
+                    <div className="flex items-center justify-between font-bold">
+                      <span>Effective Weight:</span>
+                      <span>
+                        {computedWeightGrams.toFixed(2)}g{' '}
+                        <span className="opacity-80 font-normal">
+                          ({(computedWeightGrams / GRAMS_PER_TOLA).toFixed(2)} tolas)
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between font-bold">
+                      <span>Effective Rate:</span>
+                      <span>{computedPricePerGramAED.toFixed(2)} AED / g</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs font-black text-white pt-1 border-t border-amber-500/20">
+                      <span>Total Purchase Cost:</span>
+                      <span className="text-amber-300">
+                        {(computedWeightGrams * computedPricePerGramAED).toFixed(2)} AED{' '}
+                        {rates && (
+                          <span className="text-surface-muted font-normal text-[10px]">
+                            (≈ ₹
+                            {(
+                              computedWeightGrams *
+                              computedPricePerGramAED *
+                              rates.aedInrRate
+                            ).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                            )
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons (Pinned Sticky Footer - Always Visible!) */}
+              <div className="p-3.5 sm:p-4 border-t border-surface-border bg-surface/95 flex items-center justify-between gap-2.5 flex-shrink-0">
+                <div className="text-[11px] text-surface-muted truncate max-w-[170px] sm:max-w-none">
+                  {computedWeightGrams > 0 && computedPricePerGramAED > 0 ? (
+                    <span className="text-amber-400 font-bold">
+                      Total: {(computedWeightGrams * computedPricePerGramAED).toFixed(2)} AED
+                    </span>
+                  ) : (
+                    <span>Fill weight &amp; price</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-3.5 py-2 rounded-xl border border-surface-border text-surface-muted hover:text-white hover:bg-surface-border/30 transition-colors text-xs font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-bold text-xs shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 flex items-center gap-1.5 hover:scale-[1.02]"
+                  >
+                    {submitting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                    <span>{editingHolding ? 'Update Holding' : 'Save Holding'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

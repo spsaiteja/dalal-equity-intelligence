@@ -125,43 +125,61 @@ export async function syncAccessRecordsFromVault(force = false): Promise<void> {
 
   try {
     const raw = await readVaultFile(VAULT_ACCESS_FILE);
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (Array.isArray(data.approved)) {
-        const localApproved = getApprovedUsers();
-        let changed = false;
-        for (const item of data.approved) {
-          if (item?.email && !localApproved.some((a) => a.email.toLowerCase() === item.email.toLowerCase())) {
-            localApproved.push(item);
-            changed = true;
-          }
-        }
-        if (changed) {
-          saveApprovedUsers(localApproved, false);
-        }
-      }
+    const localApproved = getApprovedUsers(); // Includes ALLOWED_EMAILS from environment
+    const localPending = getPendingUsers();
 
-      if (Array.isArray(data.pending)) {
-        const localPending = getPendingUsers();
-        let changed = false;
-        for (const item of data.pending) {
-          if (item?.email && !localPending.some((p) => p.email.toLowerCase() === item.email.toLowerCase())) {
-            localPending.push(item);
-            changed = true;
-          }
-        }
-        if (changed) {
-          savePendingUsers(localPending, false);
-        }
-      }
-    } else {
-      // If Cloud Vault has no records yet, upload all existing local and environment-approved users!
-      const currentApproved = getApprovedUsers();
-      const currentPending = getPendingUsers();
-      if (currentApproved.length > 0 || currentPending.length > 0) {
-        await syncAccessRecordsToVault();
+    let vaultApproved: ApprovedUserRecord[] = [];
+    let vaultPending: PendingUserRecord[] = [];
+
+    if (raw) {
+      try {
+        const data = JSON.parse(raw);
+        if (Array.isArray(data.approved)) vaultApproved = data.approved;
+        if (Array.isArray(data.pending)) vaultPending = data.pending;
+      } catch {}
+    }
+
+    let needsVaultUpdate = false;
+    let needsLocalUpdate = false;
+
+    // 1. Vault -> Local merge
+    for (const item of vaultApproved) {
+      if (item?.email && !localApproved.some((a) => a.email.toLowerCase() === item.email.toLowerCase())) {
+        localApproved.push(item);
+        needsLocalUpdate = true;
       }
     }
+
+    for (const item of vaultPending) {
+      if (item?.email && !localPending.some((p) => p.email.toLowerCase() === item.email.toLowerCase())) {
+        localPending.push(item);
+        needsLocalUpdate = true;
+      }
+    }
+
+    // 2. Local & ALLOWED_EMAILS -> Vault merge
+    for (const item of localApproved) {
+      if (item?.email && !vaultApproved.some((v) => v.email.toLowerCase() === item.email.toLowerCase())) {
+        vaultApproved.push(item);
+        needsVaultUpdate = true;
+      }
+    }
+
+    // Save any updates
+    if (needsLocalUpdate) {
+      saveApprovedUsers(localApproved, false);
+      savePendingUsers(localPending, false);
+    }
+
+    if (needsVaultUpdate || !raw) {
+      const payload = {
+        approved: vaultApproved,
+        pending: vaultPending,
+        updatedAt: new Date().toISOString(),
+      };
+      await writeVaultFile(VAULT_ACCESS_FILE, JSON.stringify(payload, null, 2), 'application/json');
+    }
+
     isVaultAccessSynced = true;
   } catch (err) {
     console.warn('Could not sync access records from Cloud Vault:', err);

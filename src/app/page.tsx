@@ -16,6 +16,7 @@ import { PortfolioAuditModal } from '@/components/PortfolioAuditModal';
 import { OrderModal } from '@/components/OrderModal';
 import { LoginGate } from '@/components/LoginGate';
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
+import { InactivityTracker } from '@/components/InactivityTracker';
 import { TrendingUp, Shield, Users, Activity, Clock, Zap, ArrowRight } from 'lucide-react';
 import {
   StockQuote,
@@ -618,6 +619,9 @@ export default function Dashboard() {
   // Approved User Terminal Stage
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
+      {/* 30-Minute Inactivity Auto-Logout Tracker with 2-Minute Warning */}
+      <InactivityTracker enabled={Boolean(session?.isApproved)} timeoutMinutes={30} warningSeconds={120} />
+
       {/* Top Navigation */}
       <Header
         activeTab={activeTab}

@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: 30 * 24 * 60 * 60,
+        maxAge: 24 * 60 * 60, // 24 hours (SEBI daily session standard)
       });
 
       return response;
@@ -192,13 +192,13 @@ export async function GET(request: NextRequest) {
     const destination = isApproved ? `${origin}/?auth=success` : `${origin}/?auth=pending`;
     const response = NextResponse.redirect(destination);
 
-    // Set HTTP-only secure session cookie (30 days)
+    // Set HTTP-only secure session cookie (24 hours)
     response.cookies.set(AUTH_COOKIE_NAME, sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: 24 * 60 * 60, // 24 hours
     });
 
     // If approved, issue persistent 1-Year Approval Pass cookie

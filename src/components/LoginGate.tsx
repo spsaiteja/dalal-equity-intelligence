@@ -42,6 +42,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ session, onRefreshSession 
   const [devLoggingIn, setDevLoggingIn] = useState(false);
   const [devError, setDevError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [timeoutNotice, setTimeoutNotice] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -50,6 +51,8 @@ export const LoginGate: React.FC<LoginGateProps> = ({ session, onRefreshSession 
       const reason = params.get('reason');
       if (authStatus === 'error') {
         setUrlError(reason || 'Authentication failed. Please verify credentials.');
+      } else if (authStatus === 'timeout') {
+        setTimeoutNotice(reason || 'Session expired due to 30 minutes of inactivity. Please sign in again.');
       }
     }
   }, []);
@@ -229,6 +232,16 @@ export const LoginGate: React.FC<LoginGateProps> = ({ session, onRefreshSession 
                   <div className="flex-1 text-left">
                     <p className="font-bold text-white">Sign In Error</p>
                     <p className="text-[11px] text-rose-300/90">{urlError}</p>
+                  </div>
+                </div>
+              )}
+
+              {timeoutNotice && (
+                <div className="mb-5 p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5 shadow-lg">
+                  <Clock className="h-4 w-4 shrink-0 text-amber-400 animate-pulse" />
+                  <div className="flex-1 text-left">
+                    <p className="font-bold text-amber-200">Session Timed Out</p>
+                    <p className="text-[11px] text-amber-300/90">{timeoutNotice}</p>
                   </div>
                 </div>
               )}

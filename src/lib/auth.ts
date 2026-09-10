@@ -367,7 +367,7 @@ export function signSessionPayload(user: AuthUser): string {
   const payload = {
     ...user,
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
+    exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours (SEBI daily session standard)
   };
 
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');

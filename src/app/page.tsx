@@ -104,10 +104,11 @@ export default function Dashboard() {
   const [isCouncilOpen, setIsCouncilOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'gemini' | 'upstox' | 'access'>('gemini');
+  const [settingsTab, setSettingsTab] = useState<'gemini' | 'upstox' | 'access'>('upstox');
 
-  const handleOpenSettings = (tab: 'gemini' | 'upstox' | 'access' = 'gemini') => {
-    setSettingsTab(tab);
+  const handleOpenSettings = (tab: 'gemini' | 'upstox' | 'access' = 'upstox') => {
+    const effectiveTab = !session?.isAdmin ? 'upstox' : tab;
+    setSettingsTab(effectiveTab);
     setIsSettingsOpen(true);
   };
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -656,7 +657,7 @@ export default function Dashboard() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenBriefing={handleOpenBriefing}
-        onOpenSettings={() => handleOpenSettings('gemini')}
+        onOpenSettings={() => handleOpenSettings(session?.isAdmin ? 'gemini' : 'upstox')}
         onOpenAccess={() => handleOpenSettings('access')}
         watchlistCount={watchlist.length}
         hasApiKey={Boolean(apiKey || hasServerKey)}

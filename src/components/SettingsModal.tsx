@@ -85,9 +85,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isAdmin = false,
   userEmail,
   onUsersUpdated,
-  initialTab = 'gemini',
+  initialTab = 'upstox',
 }) => {
-  const [activeTab, setActiveTab] = useState<'gemini' | 'upstox' | 'access'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'gemini' | 'upstox' | 'access'>(isAdmin ? initialTab : 'upstox');
 
   // Gemini state
   const [inputKey, setInputKey] = useState(apiKey);
@@ -209,7 +209,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Sync state when modal opens
   useEffect(() => {
     if (isOpen) {
-      if (initialTab) {
+      if (!isAdmin) {
+        setActiveTab('upstox');
+      } else if (initialTab) {
         setActiveTab(initialTab);
       }
       setInputKey(apiKey || '');
@@ -638,11 +640,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="p-5 border-b border-surface-border flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-              <Key className="h-5 w-5" />
+              {isAdmin ? <Key className="h-5 w-5" /> : <Wallet className="h-5 w-5 text-indigo-400" />}
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">System &amp; API Integrations</h3>
-              <p className="text-xs text-surface-muted">Manage Gemini AI keys, Upstox Demat &amp; Access Controls</p>
+              <h3 className="text-base font-bold text-white">
+                {isAdmin ? 'System & API Integrations' : 'Upstox Demat Integration'}
+              </h3>
+              <p className="text-xs text-surface-muted">
+                {isAdmin
+                  ? 'Manage Gemini AI keys, Upstox Demat & Access Controls'
+                  : 'Connect your personal Upstox Demat account to sync portfolio holdings'}
+              </p>
             </div>
           </div>
 
@@ -656,20 +664,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Tab Selector */}
         <div className="flex border-b border-surface-border bg-surface/50 px-5 pt-2 gap-2 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('gemini')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'gemini'
-                ? 'border-blue-500 text-white'
-                : 'border-transparent text-surface-muted hover:text-white'
-            }`}
-          >
-            <Sparkles className="h-4 w-4 text-blue-400" />
-            <span>Google Gemini AI</span>
-            {serverKeyStatus?.hasServerKey && (
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-            )}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('gemini')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
+                activeTab === 'gemini'
+                  ? 'border-blue-500 text-white'
+                  : 'border-transparent text-surface-muted hover:text-white'
+              }`}
+            >
+              <Sparkles className="h-4 w-4 text-blue-400" />
+              <span>Google Gemini AI</span>
+              {serverKeyStatus?.hasServerKey && (
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+              )}
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab('upstox')}
@@ -723,8 +733,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Content Body */}
         <div className="p-6 overflow-y-auto space-y-4">
-          {/* TAB 1: GEMINI AI */}
-          {activeTab === 'gemini' && (
+          {/* TAB 1: GEMINI AI (Master Admin Only) */}
+          {isAdmin && activeTab === 'gemini' && (
             <div className="space-y-4">
               {/* Server Key Detected Banner */}
               {serverKeyStatus?.hasServerKey && (

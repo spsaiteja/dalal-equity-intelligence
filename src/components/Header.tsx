@@ -186,11 +186,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenSettings}
             className={`p-2 rounded-xl border relative transition-all ${
-              hasApiKey
-                ? 'bg-surface-card border-surface-border text-surface-muted hover:text-white hover:border-surface-borderLight'
-                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+              isAdmin && !hasApiKey
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                : 'bg-surface-card border-surface-border text-surface-muted hover:text-white hover:border-surface-borderLight'
             }`}
-            title={hasApiKey ? 'Settings, Upstox & Access' : 'Configure Gemini API Key'}
+            title={isAdmin ? (hasApiKey ? 'Settings, Upstox & Access' : 'Configure Gemini API Key') : 'Upstox Brokerage Settings'}
           >
             <Settings className="h-4 w-4" />
             {isAdmin && pendingApprovalsCount > 0 && (

@@ -26,6 +26,7 @@ import {
   Tablet,
   Zap,
   Search,
+  Globe,
 } from 'lucide-react';
 
 interface PendingUserRecord {
@@ -120,6 +121,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [connectingAnalytics, setConnectingAnalytics] = useState(false);
   const [upstoxMessage, setUpstoxMessage] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedUri, setCopiedUri] = useState(false);
+  const [publicIp, setPublicIp] = useState<string | null>(null);
+  const [copiedIp, setCopiedIp] = useState(false);
 
   // Access Management & Usage state (Admin only)
   const [pendingUsers, setPendingUsers] = useState<PendingUserRecord[]>([]);
@@ -269,6 +272,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   }, [isOpen, apiKey, isAdmin, userEmail, loadUsersList]);
 
+  // Detect client's public static IP for easy 1-click whitelisting
+  useEffect(() => {
+    if (isOpen && activeTab === 'upstox' && !publicIp) {
+      fetch('https://api.ipify.org?format=json')
+        .then((r) => r.json())
+        .then((d) => {
+          if (d?.ip) setPublicIp(d.ip);
+        })
+        .catch(() => {});
+    }
+  }, [isOpen, activeTab, publicIp]);
+
   if (!isOpen) return null;
 
   // Save Gemini Key
@@ -327,6 +342,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setUpstoxMessage(null);
 
     try {
+      // Step A: Attempt server-side verification first
       const res = await fetch('/api/upstox/auth', {
         method: 'POST',
         headers: {
@@ -336,17 +352,72 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         body: JSON.stringify({ analyticsToken: token }),
       });
 
-      const data = await res.json();
+      let data = await res.json().catch(() => ({}));
+
+      // Step B: If server verification is blocked by Upstox Static IP rule, seamlessly verify from browser!
+      // Direct browser requests originate from the user's whitelisted home/broadband Static IP.
+      if (!data.success && (data.isStaticIpError || data.requiresClientDirect || data.error?.includes('static IP'))) {
+        try {
+          const directRes = await fetch('https://api.upstox.com/v2/user/profile', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/json',
+              'Api-Version': '2.0',
+            },
+          });
+          const directData = await directRes.json().catch(() => ({}));
+
+          if (directRes.ok && (directData?.status === 'success' || directData?.data)) {
+            const verifiedProfile = directData.data || {};
+
+            // Save verified session on server without re-triggering Upstox IP checks
+            const saveRes = await fetch('/api/upstox/auth', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-upstox-token': token,
+              },
+              body: JSON.stringify({ analyticsToken: token, verifiedProfile }),
+            });
+            data = await saveRes.json().catch(() => ({}));
+          } else {
+            const directErrMsg =
+              directData?.errors?.[0]?.message ||
+              directData?.message ||
+              '';
+            if (directErrMsg.includes('static IP')) {
+              setUpstoxMessage({
+                success: false,
+                message: `Static IP Required: Please whitelist your Public IP (${publicIp || 'shown above'}) in developer.upstox.com -> My Apps -> Primary Static IP. Once added, click Connect!`,
+              });
+              return;
+            }
+            throw new Error(directErrMsg || 'Direct browser verification rejected by Upstox');
+          }
+        } catch (directErr: any) {
+          console.warn('Direct browser Upstox verification error:', directErr);
+          if (directErr.message?.includes('static IP')) {
+            setUpstoxMessage({
+              success: false,
+              message: `Static IP Required: Please whitelist your Public IP (${publicIp || 'shown above'}) in developer.upstox.com -> My Apps -> Primary Static IP. (100% Free).`,
+            });
+            return;
+          }
+        }
+      }
 
       if (data.success) {
         // Save isolated token in user's browser localStorage
         const userTokenKey = userEmail ? `dalal_upstox_token_${userEmail}` : 'dalal_upstox_token';
         localStorage.setItem(userTokenKey, token);
         localStorage.setItem('dalal_upstox_token', token);
+        if (data.user_name || data.user_id) {
+          localStorage.setItem('dalal_upstox_user_name', data.user_name || data.user_id);
+        }
 
         setUpstoxMessage({
           success: true,
-          message: `Connected successfully! 1-Year session active (User: ${data.user_name || data.user_id}).`,
+          message: `Connected successfully via whitelisted Static IP! 1-Year session active (User: ${data.user_name || data.user_id}).`,
         });
         setUpstoxAnalyticsToken('');
         if (onUpstoxStatusChange) onUpstoxStatusChange();
@@ -355,19 +426,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         const statusRes = await fetch('/api/upstox/auth', {
           headers: { 'x-upstox-token': token },
         });
-        const statusData = await statusRes.json();
+        const statusData = await statusRes.json().catch(() => ({}));
         if (statusData.success) {
           setUpstoxStatus({
             isConnected: statusData.isConnected,
-            userName: statusData.user_name,
-            userId: statusData.user_id,
+            userName: statusData.user_name || data.user_name,
+            userId: statusData.user_id || data.user_id,
             apiKeyMasked: statusData.apiKeyMasked,
             analyticsTokenMasked: statusData.analyticsTokenMasked,
             hasCredentials: statusData.hasCredentials,
             hasAnalyticsToken: true,
             tokenType: 'analytics',
             isAnalyticsToken: true,
-            expiresAt: statusData.expires_at,
+            expiresAt: statusData.expires_at || data.expires_at,
           });
         }
       } else {
@@ -835,6 +906,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 shrink-0">
                       No Daily Login
                     </span>
+                  </div>
+
+                  {/* Free Static IP Whitelist helper */}
+                  <div className="bg-surface-card border border-surface-border/80 rounded-xl p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 mt-0.5">
+                        <Globe className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-white">Your Public Static IP:</span>
+                          {publicIp ? (
+                            <span className="font-mono text-emerald-300 font-bold text-xs bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
+                              {publicIp}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-surface-muted italic animate-pulse">Detecting IP...</span>
+                          )}
+                          <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            100% Free
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-surface-muted mt-1 leading-relaxed">
+                          Whitelist this IP in <a href="https://developer.upstox.com" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline font-semibold">developer.upstox.com &rarr; My Apps &rarr; Static IP</a>. Dalal AI verifies directly from your browser to match this IP for ₹0.
+                        </p>
+                      </div>
+                    </div>
+
+                    {publicIp && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(publicIp);
+                          setCopiedIp(true);
+                          setTimeout(() => setCopiedIp(false), 2000);
+                        }}
+                        className="shrink-0 px-2.5 py-1.5 rounded-lg bg-surface border border-surface-border hover:border-surface-borderLight text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-sm"
+                      >
+                        {copiedIp ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                        <span>{copiedIp ? 'Copied' : 'Copy IP'}</span>
+                      </button>
+                    )}
                   </div>
 
                   <div>

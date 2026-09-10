@@ -69,7 +69,8 @@ export async function fetchLiveUpstoxHoldings(accessToken: string): Promise<Upst
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err?.message || `Failed to fetch holdings (${response.status})`);
+    const msg = err?.errors?.[0]?.message || err?.message || `Failed to fetch holdings (${response.status})`;
+    throw new Error(msg);
   }
 
   const result = await response.json();
@@ -254,31 +255,107 @@ export function generateSamplePortfolio(): {
     },
   ];
 
+  const summary = calculatePortfolioSummary(sampleHoldings, true);
+  return { holdings: sampleHoldings, summary };
+}
+
+/**
+ * Calculates total invested, current valuation, and P&L percentages
+ * from an array of Upstox holdings.
+ */
+export function calculatePortfolioSummary(
+  holdings: UpstoxHolding[],
+  isDemoMode: boolean = false
+): PortfolioSummary {
   let totalInvested = 0;
   let currentValue = 0;
   let dayPnl = 0;
 
-  sampleHoldings.forEach((h) => {
-    totalInvested += h.invested_value;
-    currentValue += h.current_value;
-    dayPnl += h.quantity * h.day_change;
+  holdings.forEach((h) => {
+    totalInvested += h.invested_value || 0;
+    currentValue += h.current_value || 0;
+    dayPnl += (h.quantity || 0) * (h.day_change || 0);
   });
 
   const totalPnl = currentValue - totalInvested;
   const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
   const dayPnlPct = currentValue > 0 ? (dayPnl / (currentValue - dayPnl)) * 100 : 0;
 
-  const summary: PortfolioSummary = {
+  return {
     total_invested: parseFloat(totalInvested.toFixed(2)),
     current_value: parseFloat(currentValue.toFixed(2)),
     total_pnl: parseFloat(totalPnl.toFixed(2)),
     total_pnl_percentage: parseFloat(totalPnlPct.toFixed(2)),
     day_pnl: parseFloat(dayPnl.toFixed(2)),
     day_pnl_percentage: parseFloat(dayPnlPct.toFixed(2)),
-    holdings_count: sampleHoldings.length,
-    is_demo_mode: true,
+    holdings_count: holdings.length,
+    is_demo_mode: isDemoMode,
+  };
+}
+
+/**
+ * Places an Upstox order directly from the user's browser.
+ * Routes through the user's whitelisted home/broadband Static IP,
+ * bypassing any serverless IP restrictions.
+ */
+export async function placeBrowserDirectUpstoxOrder(
+  token: string,
+  request: {
+    symbol: string;
+    quantity: number;
+    orderType: 'MARKET' | 'LIMIT';
+    transactionType: 'BUY' | 'SELL';
+    productType: 'D' | 'I';
+    price?: number;
+    triggerPrice?: number;
+    isAmo?: boolean;
+  }
+): Promise<{ success: boolean; orderId?: string; error?: string; status?: string; message?: string }> {
+  const cleanSymbol = request.symbol.replace('.NS', '').replace('.BO', '').toUpperCase();
+  const upstoxPayload = {
+    quantity: request.quantity,
+    product: request.productType,
+    validity: 'DAY',
+    price: request.orderType === 'MARKET' ? 0 : request.price || 0,
+    tag: 'DalalAI',
+    instrument_token: `NSE_EQ|${cleanSymbol}`,
+    order_type: request.orderType,
+    transaction_type: request.transactionType,
+    disclosed_quantity: 0,
+    trigger_price: request.triggerPrice || 0,
+    is_amo: Boolean(request.isAmo),
   };
 
-  return { holdings: sampleHoldings, summary };
+  const res = await fetch(`${UPSTOX_BASE_URL}/order/place`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(upstoxPayload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (res.ok && data?.status === 'success') {
+    const orderId = data.data?.order_id || `UPSTOX-${Date.now()}`;
+    return {
+      success: true,
+      orderId,
+      status: request.isAmo ? 'AMO_QUEUED' : 'PENDING',
+      message: request.isAmo
+        ? `Upstox AMO ${request.transactionType} order placed directly from your whitelisted IP! Order ID: ${orderId}`
+        : `Upstox ${request.transactionType} order sent to NSE directly from your whitelisted IP! Order ID: ${orderId}`,
+    };
+  } else {
+    const errorMsg =
+      data?.errors?.[0]?.message ||
+      data?.message ||
+      'Upstox rejected the order placement request.';
+    return {
+      success: false,
+      error: errorMsg,
+    };
+  }
 }
 

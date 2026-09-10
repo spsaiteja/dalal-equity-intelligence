@@ -216,3 +216,4 @@ export const InactivityTracker: React.FC<InactivityTrackerProps> = ({
     </div>
   );
 };
+

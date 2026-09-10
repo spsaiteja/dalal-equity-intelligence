@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { StockQuote } from '@/types/stock';
 import { OrderPlacementRequest, OrderPlacementResponse } from '@/types/upstox';
+import { placeBrowserDirectUpstoxOrder } from '@/lib/upstox-client';
 import {
   X,
   TrendingUp,
@@ -104,10 +105,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       isPaperTrade,
     };
 
+    const userUpstoxToken = typeof window !== 'undefined'
+      ? localStorage.getItem('dalal_upstox_token')
+      : null;
+
     try {
-      const userUpstoxToken = typeof window !== 'undefined'
-        ? localStorage.getItem('dalal_upstox_token')
-        : null;
 
       const res = await fetch('/api/upstox/order', {
         method: 'POST',
@@ -117,15 +119,78 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (data.success) {
         setOrderResult(data);
         if (onOrderSuccess) onOrderSuccess(data);
+      } else if (!isPaperTrade && userUpstoxToken && (data.error?.includes('static IP') || data.isStaticIpError)) {
+        // Fall back to browser-direct order placement matching user's whitelisted Static IP
+        try {
+          const directRes = await placeBrowserDirectUpstoxOrder(userUpstoxToken, {
+            symbol: stock.symbol,
+            quantity,
+            orderType,
+            transactionType,
+            productType,
+            price: effectivePrice,
+            triggerPrice: parseFloat(stopLossPrice) || undefined,
+            isAmo: payload.isAmo,
+          });
+
+          if (directRes.success) {
+            const directResult: OrderPlacementResponse = {
+              success: true,
+              orderId: directRes.orderId || `UPSTOX-${Date.now()}`,
+              status: (directRes.status as any) || 'PENDING',
+              message: directRes.message || `Upstox order placed via browser-direct Static IP!`,
+              executionPrice: effectivePrice,
+              totalValue: parseFloat((quantity * effectivePrice).toFixed(2)),
+              timestamp: new Date().toISOString(),
+              isPaperTrade: false,
+            };
+            setOrderResult(directResult);
+            if (onOrderSuccess) onOrderSuccess(directResult);
+          } else {
+            setErrorMessage(directRes.error || data.error || 'Order placement rejected.');
+          }
+        } catch (directErr: any) {
+          setErrorMessage(directErr.message || 'Direct browser order placement failed.');
+        }
       } else {
         setErrorMessage(data.error || 'Order placement rejected.');
       }
     } catch {
+      // Direct browser attempt if network fetch to server failed
+      if (!isPaperTrade && userUpstoxToken) {
+        try {
+          const directRes = await placeBrowserDirectUpstoxOrder(userUpstoxToken, {
+            symbol: stock.symbol,
+            quantity,
+            orderType,
+            transactionType,
+            productType,
+            price: effectivePrice,
+            triggerPrice: parseFloat(stopLossPrice) || undefined,
+            isAmo: payload.isAmo,
+          });
+          if (directRes.success) {
+            const directResult: OrderPlacementResponse = {
+              success: true,
+              orderId: directRes.orderId || `UPSTOX-${Date.now()}`,
+              status: (directRes.status as any) || 'PENDING',
+              message: directRes.message || `Upstox order placed via browser-direct Static IP!`,
+              executionPrice: effectivePrice,
+              totalValue: parseFloat((quantity * effectivePrice).toFixed(2)),
+              timestamp: new Date().toISOString(),
+              isPaperTrade: false,
+            };
+            setOrderResult(directResult);
+            if (onOrderSuccess) onOrderSuccess(directResult);
+            return;
+          }
+        } catch {}
+      }
       setErrorMessage('Network error connecting to order gateway.');
     } finally {
       setSubmitting(false);

@@ -27,6 +27,8 @@ import {
 } from '@/types/stock';
 import { CouncilConsensus } from '@/types/agent';
 import { UpstoxHolding, PortfolioSummary, PortfolioAuditReport, PortfolioAlert } from '@/types/upstox';
+import { fetchLiveUpstoxHoldings, calculatePortfolioSummary } from '@/lib/upstox-client';
+import { analyzePortfolioAlerts } from '@/lib/portfolio-alerts';
 
 const DEFAULT_BUCKETS = ['Long-Term Value', 'Dip Opportunities', 'Momentum Breakouts'];
 
@@ -295,6 +297,33 @@ export default function Dashboard() {
           ? localStorage.getItem(userTokenKey) || localStorage.getItem('dalal_upstox_token')
           : null;
 
+      // 1. Browser-Direct Smart Route (100% Free):
+      // If user has configured their personal Upstox token, fetch holdings directly from browser!
+      // This routes the call from the user's whitelisted home/broadband IP, completely bypassing Vercel AWS IPs.
+      if (userUpstoxToken) {
+        try {
+          const liveHoldings = await fetchLiveUpstoxHoldings(userUpstoxToken);
+          if (Array.isArray(liveHoldings)) {
+            const summary = calculatePortfolioSummary(liveHoldings, false);
+            const alertAnalysis = analyzePortfolioAlerts(liveHoldings);
+            const cachedName = typeof window !== 'undefined' ? localStorage.getItem('dalal_upstox_user_name') : null;
+
+            setPortfolioHoldings(alertAnalysis.holdingsWithSignals);
+            setPortfolioSummary(summary);
+            setIsUpstoxConnected(true);
+            setIsDemoPortfolio(false);
+            setIsAnalyticsPortfolio(true);
+            setPortfolioUserName(cachedName || 'Upstox Investor');
+            if (alertAnalysis.alerts) setPortfolioAlerts(alertAnalysis.alerts);
+            if (alertAnalysis.alertCounts) setPortfolioAlertCounts(alertAnalysis.alertCounts);
+            return; // Succeeded directly from user's whitelisted static IP!
+          }
+        } catch (directErr: any) {
+          console.warn('Browser-direct Upstox fetch error, falling back to server:', directErr?.message || directErr);
+        }
+      }
+
+      // 2. Fallback to server route (handles paper trading / demo portfolio / OAuth sessions)
       const res = await fetch(`/api/upstox/portfolio${refresh ? '?refresh=true' : ''}`, {
         headers: userUpstoxToken ? { 'x-upstox-token': userUpstoxToken } : {},
       });

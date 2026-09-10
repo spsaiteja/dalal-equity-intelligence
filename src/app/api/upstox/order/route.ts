@@ -145,6 +145,9 @@ export async function POST(request: NextRequest) {
           upstoxData?.errors?.[0]?.message ||
           upstoxData?.message ||
           'Upstox rejected the order placement request.';
+        const isStaticIpError =
+          errorMsg.includes('static IP') ||
+          upstoxData?.errors?.[0]?.error_code === 'UDAPI100069';
 
         console.error('Upstox order placement error:', upstoxData);
 
@@ -152,6 +155,7 @@ export async function POST(request: NextRequest) {
           {
             success: false,
             error: errorMsg,
+            isStaticIpError,
             isPaperTrade: false,
           },
           { status: 400 }

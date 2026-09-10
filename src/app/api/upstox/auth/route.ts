@@ -70,7 +70,28 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Verify token with Upstox User Profile API
+      // If client already verified directly from browser matching user's whitelisted Static IP
+      if (body.verifiedProfile) {
+        const profile = body.verifiedProfile;
+        const session = saveAnalyticsSession(token, {
+          user_id: profile.user_id || 'UPSTOX_USER',
+          user_name: profile.user_name || 'Upstox Investor',
+          email: profile.email || '',
+          broker: profile.broker || 'Upstox',
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: '1-Year Analytics Token verified via whitelisted Static IP and connected successfully!',
+          user_name: session.user_name,
+          user_id: session.user_id,
+          expires_at: session.expires_at,
+          tokenType: 'analytics',
+          isAnalyticsToken: true,
+        });
+      }
+
+      // Otherwise verify token with Upstox User Profile API
       try {
         const profileRes = await fetch('https://api.upstox.com/v2/user/profile', {
           headers: {
@@ -80,7 +101,7 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        const profileData = await profileRes.json();
+        const profileData = await profileRes.json().catch(() => ({}));
 
         if (profileRes.ok && (profileData?.status === 'success' || profileData?.data)) {
           const profile = profileData.data || {};
@@ -105,11 +126,29 @@ export async function POST(request: NextRequest) {
             profileData?.errors?.[0]?.message ||
             profileData?.message ||
             'Invalid Upstox Analytics Token. Please copy the fresh token from your Upstox Developer portal.';
-          return NextResponse.json({ success: false, error: errorMsg }, { status: 401 });
+          const isStaticIpError =
+            errorMsg.includes('static IP') ||
+            profileData?.errors?.[0]?.error_code === 'UDAPI100069';
+
+          return NextResponse.json(
+            {
+              success: false,
+              error: errorMsg,
+              isStaticIpError,
+              requiresClientDirect: isStaticIpError,
+            },
+            { status: isStaticIpError ? 200 : 401 }
+          );
         }
       } catch (err: any) {
+        const isStaticIpError = err.message?.includes('static IP');
         return NextResponse.json(
-          { success: false, error: `Failed to connect with Upstox: ${err.message}` },
+          {
+            success: false,
+            error: `Failed to connect with Upstox: ${err.message}`,
+            isStaticIpError,
+            requiresClientDirect: isStaticIpError,
+          },
           { status: 500 }
         );
       }

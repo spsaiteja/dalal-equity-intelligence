@@ -930,6 +930,7 @@ export default function Dashboard() {
         suggestedTarget={orderTargetPrice}
         suggestedStopLoss={orderStopLossPrice}
         isUpstoxConnected={isUpstoxConnected}
+        isAnalyticsToken={isAnalyticsPortfolio}
         onOrderSuccess={(_res) => {
           loadPortfolio(true);
         }}

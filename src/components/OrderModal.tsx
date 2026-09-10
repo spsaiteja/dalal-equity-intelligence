@@ -29,6 +29,7 @@ interface OrderModalProps {
   suggestedTarget?: number | string;
   suggestedStopLoss?: number | string;
   isUpstoxConnected: boolean;
+  isAnalyticsToken?: boolean;
   onOrderSuccess?: (response: OrderPlacementResponse) => void;
 }
 
@@ -40,6 +41,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   suggestedTarget,
   suggestedStopLoss,
   isUpstoxConnected,
+  isAnalyticsToken = false,
   onOrderSuccess,
 }) => {
   const [transactionType, setTransactionType] = useState<'BUY' | 'SELL'>(initialTransactionType);
@@ -49,7 +51,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [limitPrice, setLimitPrice] = useState<number>(0);
   const [targetPrice, setTargetPrice] = useState<string>('');
   const [stopLossPrice, setStopLossPrice] = useState<string>('');
-  const [isPaperTrade, setIsPaperTrade] = useState<boolean>(!isUpstoxConnected);
+  const [isPaperTrade, setIsPaperTrade] = useState<boolean>(!isUpstoxConnected || isAnalyticsToken);
   const [capitalInput, setCapitalInput] = useState<string>('');
 
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -63,13 +65,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       setLimitPrice(stock.price);
       setTargetPrice(suggestedTarget ? String(suggestedTarget).replace('₹', '') : String(Math.round(stock.price * 1.12)));
       setStopLossPrice(suggestedStopLoss ? String(suggestedStopLoss).replace('₹', '') : String(Math.round(stock.price * 0.94)));
-      setIsPaperTrade(!isUpstoxConnected);
+      setIsPaperTrade(!isUpstoxConnected || isAnalyticsToken);
       setOrderResult(null);
       setErrorMessage(null);
       setQuantity(10);
       setCapitalInput('');
     }
-  }, [isOpen, stock, initialTransactionType, suggestedTarget, suggestedStopLoss, isUpstoxConnected]);
+  }, [isOpen, stock, initialTransactionType, suggestedTarget, suggestedStopLoss, isUpstoxConnected, isAnalyticsToken]);
 
   if (!isOpen || !stock) return null;
 
@@ -124,6 +126,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       if (data.success) {
         setOrderResult(data);
         if (onOrderSuccess) onOrderSuccess(data);
+      } else if (!isPaperTrade && (isAnalyticsToken || data.error?.toLowerCase().includes('invalid token'))) {
+        setErrorMessage(
+          'Upstox 1-Year Analytics Tokens are Read-Only (Holdings & P&L sync). Real orders cannot be placed with an Analytics token per SEBI regulations. Please toggle to "Paper Trading" mode below, or connect with Daily OAuth 2.0 in Settings for live orders.'
+        );
       } else if (!isPaperTrade && userUpstoxToken && (data.error?.includes('static IP') || data.isStaticIpError)) {
         // Fall back to browser-direct order placement matching user's whitelisted Static IP
         try {
@@ -519,6 +525,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               </div>
 
+              {/* Analytics Token Read-Only Info Banner */}
+              {isAnalyticsToken && (
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-start gap-2.5">
+                  <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <span className="font-bold text-blue-300 block">1-Year Analytics Token Active (Read-Only)</span>
+                    <p className="text-[11px] text-blue-200/80 leading-relaxed mt-0.5">
+                      Your token provides 365-day read-only Demat sync for portfolio &amp; AI audits. Per SEBI rules, live NSE orders require a <strong>Daily OAuth 2.0</strong> session. This order will execute in <strong>Paper Trading Mode</strong> with real-time CMP and zero financial risk.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Execution Mode: Live Upstox vs Paper Trading Switcher */}
               <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-surface-border">
                 <div className="flex items-center gap-2">
@@ -546,7 +565,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 {isUpstoxConnected && (
                   <button
                     type="button"
-                    onClick={() => setIsPaperTrade(!isPaperTrade)}
+                    onClick={() => {
+                      if (isAnalyticsToken && isPaperTrade) {
+                        setErrorMessage(
+                          'Upstox 1-Year Analytics Tokens are Read-Only by SEBI regulations. Real orders require Daily OAuth 2.0 in Settings. You can simulate this trade right now in Paper Trading mode!'
+                        );
+                        return;
+                      }
+                      setIsPaperTrade(!isPaperTrade);
+                    }}
                     className="px-2.5 py-1 rounded-lg bg-surface-card border border-surface-border hover:border-surface-borderLight text-[10px] font-bold text-white transition-colors"
                   >
                     Switch to {isPaperTrade ? 'Live' : 'Paper'}

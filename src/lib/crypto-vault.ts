@@ -10,9 +10,6 @@ function getMasterSecret(): string {
   if (process.env.AUTH_SECRET) {
     return process.env.AUTH_SECRET;
   }
-  if (process.env.GOOGLE_CLIENT_SECRET || process.env.GEMINI_API_KEY) {
-    return `dalal_vault_master_${process.env.GOOGLE_CLIENT_SECRET || ''}_${process.env.GEMINI_API_KEY || ''}`;
-  }
   return 'dalal-terminal-default-vault-secure-key-2026';
 }
 
@@ -20,9 +17,9 @@ function getMasterSecret(): string {
  * Derives a unique 256-bit cryptographic key for a specific user email
  * using Scrypt key derivation function.
  */
-function deriveUserKey(email: string): Buffer {
+function deriveUserKey(email: string, secretOverride?: string): Buffer {
   const cleanEmail = email.trim().toLowerCase();
-  const masterSecret = getMasterSecret();
+  const masterSecret = secretOverride || getMasterSecret();
   // Use email as salt to ensure per-user key isolation
   return crypto.scryptSync(masterSecret, `salt_${cleanEmail}`, 32);
 }
@@ -73,6 +70,7 @@ export function encryptUserData<T>(data: T, userEmail: string): string {
 
 /**
  * Decrypts data previously encrypted with encryptUserData.
+ * Tries multiple candidate secrets for backwards compatibility across deployments.
  * Returns null if authentication tag fails or data is corrupted.
  */
 export function decryptUserData<T>(cipherString: string, userEmail: string): T | null {
@@ -84,18 +82,30 @@ export function decryptUserData<T>(cipherString: string, userEmail: string): T |
       return null;
     }
 
-    const key = deriveUserKey(userEmail);
+    const cleanEmail = userEmail.trim().toLowerCase();
+    const candidateSecrets = [
+      getMasterSecret(),
+      'dalal-terminal-default-vault-secure-key-2026',
+      'dalal-ai-terminal-secure-secret-key-2026-production',
+      `dalal_vault_master_${process.env.GOOGLE_CLIENT_SECRET || ''}_${process.env.GEMINI_API_KEY || ''}`,
+    ];
+
     const iv = Buffer.from(payload.iv, 'base64');
     const tag = Buffer.from(payload.tag, 'base64');
     const encryptedData = Buffer.from(payload.data, 'base64');
 
-    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-    decipher.setAuthTag(tag);
+    for (const secret of candidateSecrets) {
+      try {
+        const key = deriveUserKey(cleanEmail, secret);
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(tag);
+        let decrypted = decipher.update(encryptedData);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return JSON.parse(decrypted.toString('utf8')) as T;
+      } catch {}
+    }
 
-    let decrypted = decipher.update(encryptedData);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-
-    return JSON.parse(decrypted.toString('utf8')) as T;
+    return null;
   } catch (error) {
     console.warn(`Decryption failed or invalid format for user ${userEmail}:`, error);
     return null;

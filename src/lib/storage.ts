@@ -119,7 +119,30 @@ export async function loadUserWatchlist(email?: string | null): Promise<{ watchl
   const hash = getUserVaultHash(cleanEmail);
   const userWlFile = path.join(getDataDir(), `watchlist_${hash}.json`);
 
-  // 1. Try reading from Google Drive Vault if configured
+  // 1. Try reading direct JSON from Cloud Vault (Upstash Redis)
+  if (isVaultConfigured()) {
+    try {
+      const jsonFilename = `watchlist_${hash}.json`;
+      const rawJson = await readVaultFile(jsonFilename);
+      if (rawJson) {
+        const parsed = JSON.parse(rawJson);
+        if (parsed && Array.isArray(parsed.watchlist) && parsed.watchlist.length > 0) {
+          ensureDataDir();
+          try {
+            fs.writeFileSync(userWlFile, JSON.stringify(parsed, null, 2), 'utf-8');
+          } catch {}
+          return {
+            watchlist: parsed.watchlist,
+            buckets: parsed.buckets && parsed.buckets.length > 0 ? parsed.buckets : DEFAULT_BUCKETS,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed reading direct JSON watchlist from Cloud Vault:', e);
+    }
+  }
+
+  // 2. Try reading AES-256 encrypted file from Vault if direct JSON not found
   if (isVaultConfigured()) {
     try {
       const vaultFilename = `wl_${hash}.enc`;
@@ -142,12 +165,12 @@ export async function loadUserWatchlist(email?: string | null): Promise<{ watchl
     }
   }
 
-  // 2. Try reading from local per-user cache
+  // 3. Try reading from local per-user cache
   try {
     if (fs.existsSync(userWlFile)) {
       const raw = fs.readFileSync(userWlFile, 'utf-8');
       const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.watchlist)) {
+      if (parsed && Array.isArray(parsed.watchlist) && parsed.watchlist.length > 0) {
         return {
           watchlist: parsed.watchlist,
           buckets: parsed.buckets && parsed.buckets.length > 0 ? parsed.buckets : DEFAULT_BUCKETS,
@@ -156,7 +179,7 @@ export async function loadUserWatchlist(email?: string | null): Promise<{ watchl
     }
   } catch (e) {}
 
-  // 3. Fallback to standard disk watchlist
+  // 4. Fallback to standard disk watchlist
   return loadWatchlistFromDisk();
 }
 
@@ -189,9 +212,13 @@ export async function saveUserWatchlist(
     fs.writeFileSync(userWlFile, JSON.stringify(payload, null, 2), 'utf-8');
   } catch (e) {}
 
-  // 2. Encrypt and upload to Google Drive Vault
+  // 2. Save directly to Cloud Vault (Upstash Redis) as structured JSON
   if (isVaultConfigured()) {
     try {
+      const jsonFilename = `watchlist_${hash}.json`;
+      await writeVaultFile(jsonFilename, JSON.stringify(payload, null, 2), 'application/json');
+
+      // Also maintain encrypted backup for Google Drive
       const vaultFilename = `wl_${hash}.enc`;
       const cipherText = encryptUserData(payload, cleanEmail);
       await writeVaultFile(vaultFilename, cipherText, 'text/plain');

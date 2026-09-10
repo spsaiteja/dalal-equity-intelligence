@@ -195,18 +195,22 @@ export default function Dashboard() {
       // 1. First, check LocalStorage for the user's saved watchlist & buckets
       const userWatchlistKey = session?.user?.email ? `dalal_ai_watchlist_${session.user.email}` : 'dalal_ai_watchlist';
       const localWatchlistRaw = typeof window !== 'undefined'
-        ? (localStorage.getItem(userWatchlistKey) || localStorage.getItem('dalal_ai_watchlist'))
+        ? (localStorage.getItem(userWatchlistKey) ||
+           localStorage.getItem('dalal_ai_watchlist') ||
+           (session?.user?.email ? localStorage.getItem(`dalal_watchlist_${session.user.email}`) : null))
         : null;
       const localBucketsRaw = typeof window !== 'undefined'
         ? localStorage.getItem('dalal_ai_buckets')
         : null;
 
       let hasLocalWatchlist = false;
+      let parsedLocalWatchlist: WatchlistItem[] = [];
       if (localWatchlistRaw) {
         try {
           const parsed = JSON.parse(localWatchlistRaw);
           if (Array.isArray(parsed) && parsed.length > 0) {
             setWatchlist(parsed);
+            parsedLocalWatchlist = parsed;
             hasLocalWatchlist = true;
           }
         } catch (e) {
@@ -230,12 +234,31 @@ export default function Dashboard() {
         .then((res) => res.json())
         .then((data) => {
           if (data.success && Array.isArray(data.watchlist) && data.watchlist.length > 0) {
-            setWatchlist(data.watchlist);
-            localStorage.setItem(userWatchlistKey, JSON.stringify(data.watchlist));
-            localStorage.setItem('dalal_ai_watchlist', JSON.stringify(data.watchlist));
-            if (data.buckets && data.buckets.length > 0) {
-              setBuckets(data.buckets);
-              localStorage.setItem('dalal_ai_buckets', JSON.stringify(data.buckets));
+            // Check if server only returned the 2 demo fallback stocks (HDFC Bank & Tata Motors)
+            const isServerDemoFallback =
+              data.watchlist.length === 2 &&
+              data.watchlist.some((w: any) => w.symbol === 'HDFCBANK.NS') &&
+              data.watchlist.some((w: any) => w.symbol === 'TATAMOTORS.NS');
+
+            const userHasCustomStocks =
+              hasLocalWatchlist &&
+              parsedLocalWatchlist.length > 0 &&
+              !parsedLocalWatchlist.every(
+                (w) => w.symbol === 'HDFCBANK.NS' || w.symbol === 'TATAMOTORS.NS'
+              );
+
+            if (userHasCustomStocks && isServerDemoFallback) {
+              // PRESERVE user's custom stocks and push to Cloud Vault immediately!
+              const effectiveBuckets = localBucketsRaw ? JSON.parse(localBucketsRaw) : buckets;
+              persistWatchlist(parsedLocalWatchlist, effectiveBuckets);
+            } else {
+              setWatchlist(data.watchlist);
+              localStorage.setItem(userWatchlistKey, JSON.stringify(data.watchlist));
+              localStorage.setItem('dalal_ai_watchlist', JSON.stringify(data.watchlist));
+              if (data.buckets && data.buckets.length > 0) {
+                setBuckets(data.buckets);
+                localStorage.setItem('dalal_ai_buckets', JSON.stringify(data.buckets));
+              }
             }
           } else if (hasLocalWatchlist && localWatchlistRaw) {
             // Push initial local watchlist to cloud vault if server was empty

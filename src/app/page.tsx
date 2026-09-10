@@ -13,6 +13,7 @@ import { AddToWatchlistModal } from '@/components/AddToWatchlistModal';
 import { CouncilModal } from '@/components/CouncilModal';
 import { PortfolioView } from '@/components/PortfolioView';
 import { PortfolioAuditModal } from '@/components/PortfolioAuditModal';
+import { BullionView } from '@/components/BullionView';
 import { OrderModal } from '@/components/OrderModal';
 import { LoginGate } from '@/components/LoginGate';
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
@@ -54,7 +55,7 @@ export default function Dashboard() {
   const [loadingSession, setLoadingSession] = useState<boolean>(true);
 
   // Tab & Core Data States
-  const [activeTab, setActiveTab] = useState<'screener' | 'watchlist' | 'portfolio'>('screener');
+  const [activeTab, setActiveTab] = useState<'screener' | 'watchlist' | 'portfolio' | 'bullion'>('screener');
   const [indices, setIndices] = useState<MarketIndex[]>([]);
   const [stocks, setStocks] = useState<StockQuote[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -822,6 +823,11 @@ export default function Dashboard() {
             onOpenOrderModal={handleOpenOrderModal}
             isAnalyticsToken={isAnalyticsPortfolio}
           />
+        )}
+
+        {/* Master Admin UAE Gold & Silver Live Bullion Tracker & Portfolio */}
+        {activeTab === 'bullion' && Boolean(session?.isAdmin) && (
+          <BullionView />
         )}
       </main>
 

@@ -12,6 +12,7 @@ import {
   LogOut,
   Shield,
   UserCheck,
+  Coins,
 } from 'lucide-react';
 
 interface AuthUserHeader {
@@ -22,8 +23,8 @@ interface AuthUserHeader {
 }
 
 interface HeaderProps {
-  activeTab: 'screener' | 'watchlist' | 'portfolio';
-  setActiveTab: (tab: 'screener' | 'watchlist' | 'portfolio') => void;
+  activeTab: 'screener' | 'watchlist' | 'portfolio' | 'bullion';
+  setActiveTab: (tab: 'screener' | 'watchlist' | 'portfolio' | 'bullion') => void;
   onOpenBriefing: () => void;
   onOpenSettings: () => void;
   onOpenAccess?: () => void;
@@ -146,6 +147,31 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
           </button>
+
+          {/* Master Admin Bullion & UAE Rates Tracker Tab */}
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('bullion')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all relative ${
+                activeTab === 'bullion'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-md shadow-amber-500/30 font-bold'
+                  : 'text-amber-400/90 hover:text-amber-300 hover:bg-amber-500/10'
+              }`}
+              title="Dubai Gold Souk live rates and personal bullion portfolio"
+            >
+              <Coins className="h-4 w-4" />
+              <span>UAE Bullion</span>
+              <span
+                className={`text-[9px] uppercase font-black px-1.5 py-0.2 rounded border ${
+                  activeTab === 'bullion'
+                    ? 'bg-black/20 text-black border-black/30'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                }`}
+              >
+                GOLD
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Right Actions */}

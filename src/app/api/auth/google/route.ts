@@ -19,9 +19,9 @@ export async function GET(request: NextRequest) {
   const redirectUri = getAuthRedirectUri(request);
   const linkDrive = request.nextUrl.searchParams.get('link_drive') === 'true';
 
-  // Normal users ONLY get openid, email, profile. Master Admin linking Drive gets drive scope.
+  // Normal users ONLY get openid, email, profile. Master Admin linking Drive gets drive.file scope.
   const scope = linkDrive
-    ? encodeURIComponent('openid email profile https://www.googleapis.com/auth/drive')
+    ? encodeURIComponent('openid email profile https://www.googleapis.com/auth/drive.file')
     : encodeURIComponent('openid email profile');
 
   const prompt = linkDrive ? 'consent' : 'select_account';

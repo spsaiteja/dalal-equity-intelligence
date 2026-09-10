@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "email": "teja.sai42@gmail.com",
+    "name": "Master Admin",
+    "approvedAt": "2026-09-10T07:46:14.017Z",
+    "approvedBy": "SYSTEM_ROOT"
+  },
+  {
+    "email": "spsaiteja.eidiko@gmail.com",
+    "name": "Sai Teja (Eidiko)",
+    "approvedAt": "2026-09-10T07:46:14.016Z",
+    "approvedBy": "teja.sai42@gmail.com"
+  }
+]

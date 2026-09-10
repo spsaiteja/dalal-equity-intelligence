@@ -233,7 +233,7 @@ export default function Dashboard() {
       fetch('/api/watchlist')
         .then((res) => res.json())
         .then((data) => {
-          if (data.success && Array.isArray(data.watchlist) && data.watchlist.length > 0) {
+          if (data.success && Array.isArray(data.watchlist)) {
             // Check if server only returned the 2 demo fallback stocks (HDFC Bank & Tata Motors)
             const isServerDemoFallback =
               data.watchlist.length === 2 &&

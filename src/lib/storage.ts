@@ -126,7 +126,7 @@ export async function loadUserWatchlist(email?: string | null): Promise<{ watchl
       const rawJson = await readVaultFile(jsonFilename);
       if (rawJson) {
         const parsed = JSON.parse(rawJson);
-        if (parsed && Array.isArray(parsed.watchlist) && parsed.watchlist.length > 0) {
+        if (parsed && Array.isArray(parsed.watchlist)) {
           ensureDataDir();
           try {
             fs.writeFileSync(userWlFile, JSON.stringify(parsed, null, 2), 'utf-8');
@@ -149,10 +149,15 @@ export async function loadUserWatchlist(email?: string | null): Promise<{ watchl
       const cipherText = await readVaultFile(vaultFilename);
       if (cipherText) {
         const decrypted = decryptUserData<{ watchlist: WatchlistItem[]; buckets?: string[] }>(cipherText, cleanEmail);
-        if (decrypted && Array.isArray(decrypted.watchlist) && decrypted.watchlist.length > 0) {
+        if (decrypted && Array.isArray(decrypted.watchlist)) {
           ensureDataDir();
           try {
             fs.writeFileSync(userWlFile, JSON.stringify(decrypted, null, 2), 'utf-8');
+          } catch {}
+          // Immediately save as unencrypted direct JSON to Cloud Vault for future zero-decryption loads
+          try {
+            const jsonFilename = `watchlist_${hash}.json`;
+            await writeVaultFile(jsonFilename, JSON.stringify(decrypted, null, 2), 'application/json');
           } catch {}
           return {
             watchlist: decrypted.watchlist,

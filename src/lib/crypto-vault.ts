@@ -83,11 +83,40 @@ export function decryptUserData<T>(cipherString: string, userEmail: string): T |
     }
 
     const cleanEmail = userEmail.trim().toLowerCase();
-    const candidateSecrets = [
+    const rawGoogleSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+    const cleanGoogleSecret = rawGoogleSecret.trim();
+    const rawGeminiKey = process.env.GEMINI_API_KEY || '';
+    const cleanGeminiKey = rawGeminiKey.trim();
+    const rawAuthSecret = process.env.AUTH_SECRET || '';
+    const cleanAuthSecret = rawAuthSecret.trim();
+    const rawVaultSecret = process.env.VAULT_SECRET || '';
+    const cleanVaultSecret = rawVaultSecret.trim();
+
+    const candidateSecrets: string[] = [
       getMasterSecret(),
       'dalal-terminal-default-vault-secure-key-2026',
+      'dalal-terminal-production-secret-key-2026',
       'dalal-ai-terminal-secure-secret-key-2026-production',
-      `dalal_vault_master_${process.env.GOOGLE_CLIENT_SECRET || ''}_${process.env.GEMINI_API_KEY || ''}`,
+      `dalal_vault_master_${rawGoogleSecret}_${rawGeminiKey}`,
+      `dalal_vault_master_${cleanGoogleSecret}_${cleanGeminiKey}`,
+      `dalal_sec_${rawGoogleSecret}_${rawGeminiKey}`,
+      `dalal_sec_${cleanGoogleSecret}_${cleanGeminiKey}`,
+      `dalal_vault_master_${cleanGoogleSecret}_`,
+      `dalal_vault_master__${cleanGeminiKey}`,
+      `dalal_sec_${cleanGoogleSecret}_`,
+      `dalal_sec__${cleanGeminiKey}`,
+      cleanGoogleSecret,
+      cleanGeminiKey,
+      cleanAuthSecret,
+      cleanVaultSecret,
+    ].filter(Boolean);
+
+    const candidateSalts: string[] = [
+      `salt_${cleanEmail}`,
+      `salt_${userEmail.trim()}`,
+      `salt_${userEmail}`,
+      cleanEmail,
+      'salt_',
     ];
 
     const iv = Buffer.from(payload.iv, 'base64');
@@ -95,14 +124,16 @@ export function decryptUserData<T>(cipherString: string, userEmail: string): T |
     const encryptedData = Buffer.from(payload.data, 'base64');
 
     for (const secret of candidateSecrets) {
-      try {
-        const key = deriveUserKey(cleanEmail, secret);
-        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-        decipher.setAuthTag(tag);
-        let decrypted = decipher.update(encryptedData);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-        return JSON.parse(decrypted.toString('utf8')) as T;
-      } catch {}
+      for (const salt of candidateSalts) {
+        try {
+          const key = crypto.scryptSync(secret, salt, 32);
+          const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+          decipher.setAuthTag(tag);
+          let decrypted = decipher.update(encryptedData);
+          decrypted = Buffer.concat([decrypted, decipher.final()]);
+          return JSON.parse(decrypted.toString('utf8')) as T;
+        } catch {}
+      }
     }
 
     return null;

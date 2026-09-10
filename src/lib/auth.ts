@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { NextRequest } from 'next/server';
+import { isVaultConfigured, readVaultFile, writeVaultFile } from './drive-vault';
 
 export interface AuthUser {
   id: string;
@@ -43,6 +44,8 @@ function getPendingUsersFile() {
 
 export const AUTH_COOKIE_NAME = 'dalal_auth_session';
 export const APPROVAL_PASS_COOKIE = 'dalal_approval_pass';
+const VAULT_ACCESS_FILE = 'dalal_access_records.json';
+let isVaultAccessSynced = false;
 
 // Sign an approval pass tied to a specific email (1-Year Validity)
 export function signApprovalPass(email: string): string {
@@ -100,7 +103,6 @@ function getAuthSecret(): string {
   if (process.env.AUTH_SECRET) {
     return process.env.AUTH_SECRET;
   }
-  // In production, fallback to private server entropy so cookies cannot be forged from git source
   if (process.env.GOOGLE_CLIENT_SECRET || process.env.GEMINI_API_KEY) {
     return `dalal_sec_${process.env.GOOGLE_CLIENT_SECRET || ''}_${process.env.GEMINI_API_KEY || ''}`;
   }
@@ -111,6 +113,62 @@ function getAuthSecret(): string {
 export function isMasterAdmin(email?: string | null): boolean {
   if (!email) return false;
   return email.trim().toLowerCase() === getAdminEmail();
+}
+
+/**
+ * Synchronizes approved and pending users from Google Drive Vault.
+ * Ensures cold-started serverless functions have the latest user access records.
+ */
+export async function syncAccessRecordsFromVault(force = false): Promise<void> {
+  if (!isVaultConfigured()) return;
+  if (isVaultAccessSynced && !force) return;
+
+  try {
+    const raw = await readVaultFile(VAULT_ACCESS_FILE);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.approved)) {
+        const localApproved = getApprovedUsers();
+        for (const item of data.approved) {
+          if (item?.email && !localApproved.some((a) => a.email.toLowerCase() === item.email.toLowerCase())) {
+            localApproved.push(item);
+          }
+        }
+        saveApprovedUsers(localApproved, false);
+      }
+
+      if (Array.isArray(data.pending)) {
+        const localPending = getPendingUsers();
+        for (const item of data.pending) {
+          if (item?.email && !localPending.some((p) => p.email.toLowerCase() === item.email.toLowerCase())) {
+            localPending.push(item);
+          }
+        }
+        savePendingUsers(localPending, false);
+      }
+    }
+    isVaultAccessSynced = true;
+  } catch (err) {
+    console.warn('Could not sync access records from Drive Vault:', err);
+  }
+}
+
+/**
+ * Saves access records to the Google Drive Vault so approvals persist forever.
+ */
+export async function syncAccessRecordsToVault(): Promise<boolean> {
+  if (!isVaultConfigured()) return false;
+  try {
+    const payload = {
+      approved: getApprovedUsers(),
+      pending: getPendingUsers(),
+      updatedAt: new Date().toISOString(),
+    };
+    return await writeVaultFile(VAULT_ACCESS_FILE, JSON.stringify(payload, null, 2), 'application/json');
+  } catch (err) {
+    console.warn('Could not sync access records to Drive Vault:', err);
+    return false;
+  }
 }
 
 // Read Approved Users
@@ -152,10 +210,13 @@ export function getApprovedUsers(): ApprovedUserRecord[] {
 }
 
 // Save Approved Users
-function saveApprovedUsers(records: ApprovedUserRecord[]) {
+function saveApprovedUsers(records: ApprovedUserRecord[], triggerVaultSync = true) {
   ensureDataDir();
   try {
     fs.writeFileSync(getApprovedUsersFile(), JSON.stringify(records, null, 2), 'utf8');
+    if (triggerVaultSync) {
+      syncAccessRecordsToVault().catch(() => {});
+    }
     return true;
   } catch (err) {
     console.error('Error saving approved_users.json:', err);
@@ -182,10 +243,13 @@ export function getPendingUsers(): PendingUserRecord[] {
 }
 
 // Save Pending Users
-function savePendingUsers(records: PendingUserRecord[]) {
+function savePendingUsers(records: PendingUserRecord[], triggerVaultSync = true) {
   ensureDataDir();
   try {
     fs.writeFileSync(getPendingUsersFile(), JSON.stringify(records, null, 2), 'utf8');
+    if (triggerVaultSync) {
+      syncAccessRecordsToVault().catch(() => {});
+    }
     return true;
   } catch (err) {
     console.error('Error saving pending_users.json:', err);
@@ -217,7 +281,7 @@ export function recordPendingUser(user: { email: string; name: string; picture?:
     });
   }
 
-  savePendingUsers(current);
+  savePendingUsers(current, true);
 }
 
 // Check if user is approved
@@ -244,12 +308,12 @@ export function approveUser(email: string, name?: string, approvedBy: string = '
       approvedAt: new Date().toISOString(),
       approvedBy,
     });
-    saveApprovedUsers(current);
+    saveApprovedUsers(current, true);
   }
 
   // Remove from pending list
   const pending = getPendingUsers().filter((u) => u.email.toLowerCase() !== cleanEmail);
-  savePendingUsers(pending);
+  savePendingUsers(pending, true);
 
   return true;
 }
@@ -260,7 +324,7 @@ export function revokeUser(email: string): boolean {
   if (isMasterAdmin(cleanEmail)) return false; // Cannot revoke master admin
 
   const current = getApprovedUsers().filter((u) => u.email.toLowerCase() !== cleanEmail);
-  saveApprovedUsers(current);
+  saveApprovedUsers(current, true);
   return true;
 }
 
@@ -342,5 +406,3 @@ export function getAuthRedirectUri(request: NextRequest): string {
   // On any Vercel deployment (*.vercel.app) or preview URL, always use the canonical production domain
   return 'https://dalal-equity-intelligence.vercel.app/api/auth/google/callback';
 }
-
-

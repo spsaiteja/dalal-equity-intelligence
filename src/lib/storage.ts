@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { WatchlistItem } from '@/types/stock';
+import { isVaultConfigured, readVaultFile, writeVaultFile } from './drive-vault';
+import { encryptUserData, decryptUserData, getUserVaultHash } from './crypto-vault';
 
 function getDataDir(): string {
   if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
@@ -103,3 +105,101 @@ export function saveWatchlistToDisk(watchlist: WatchlistItem[], buckets?: string
   }
 }
 
+/**
+ * Loads a user's personal watchlist and custom buckets.
+ * Prioritizes Drive Vault (AES-256 decrypted) for cross-device synchronization,
+ * falling back to local disk and standard defaults.
+ */
+export async function loadUserWatchlist(email?: string | null): Promise<{ watchlist: WatchlistItem[]; buckets: string[] }> {
+  if (!email) {
+    return loadWatchlistFromDisk();
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const hash = getUserVaultHash(cleanEmail);
+  const userWlFile = path.join(getDataDir(), `watchlist_${hash}.json`);
+
+  // 1. Try reading from Google Drive Vault if configured
+  if (isVaultConfigured()) {
+    try {
+      const vaultFilename = `wl_${hash}.enc`;
+      const cipherText = await readVaultFile(vaultFilename);
+      if (cipherText) {
+        const decrypted = decryptUserData<{ watchlist: WatchlistItem[]; buckets?: string[] }>(cipherText, cleanEmail);
+        if (decrypted && Array.isArray(decrypted.watchlist) && decrypted.watchlist.length > 0) {
+          ensureDataDir();
+          try {
+            fs.writeFileSync(userWlFile, JSON.stringify(decrypted, null, 2), 'utf-8');
+          } catch {}
+          return {
+            watchlist: decrypted.watchlist,
+            buckets: decrypted.buckets && decrypted.buckets.length > 0 ? decrypted.buckets : DEFAULT_BUCKETS,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load watchlist from Drive Vault:', e);
+    }
+  }
+
+  // 2. Try reading from local per-user cache
+  try {
+    if (fs.existsSync(userWlFile)) {
+      const raw = fs.readFileSync(userWlFile, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.watchlist)) {
+        return {
+          watchlist: parsed.watchlist,
+          buckets: parsed.buckets && parsed.buckets.length > 0 ? parsed.buckets : DEFAULT_BUCKETS,
+        };
+      }
+    }
+  } catch (e) {}
+
+  // 3. Fallback to standard disk watchlist
+  return loadWatchlistFromDisk();
+}
+
+/**
+ * Saves a user's personal watchlist and buckets to local disk and encrypts it
+ * into the Google Drive Vault for seamless cross-device synchronization.
+ */
+export async function saveUserWatchlist(
+  email: string | null | undefined,
+  watchlist: WatchlistItem[],
+  buckets?: string[]
+): Promise<boolean> {
+  // Always save to standard disk as a baseline
+  saveWatchlistToDisk(watchlist, buckets);
+
+  if (!email) return true;
+
+  const cleanEmail = email.trim().toLowerCase();
+  const hash = getUserVaultHash(cleanEmail);
+  const payload = {
+    watchlist,
+    buckets: buckets && buckets.length > 0 ? buckets : DEFAULT_BUCKETS,
+    updatedAt: new Date().toISOString(),
+  };
+
+  // 1. Save to local per-user file
+  ensureDataDir();
+  const userWlFile = path.join(getDataDir(), `watchlist_${hash}.json`);
+  try {
+    fs.writeFileSync(userWlFile, JSON.stringify(payload, null, 2), 'utf-8');
+  } catch (e) {}
+
+  // 2. Encrypt and upload to Google Drive Vault
+  if (isVaultConfigured()) {
+    try {
+      const vaultFilename = `wl_${hash}.enc`;
+      const cipherText = encryptUserData(payload, cleanEmail);
+      await writeVaultFile(vaultFilename, cipherText, 'text/plain');
+    } catch (e) {
+      console.error('Failed to save watchlist to Drive Vault:', e);
+      return false;
+    }
+  }
+
+  return true;
+}

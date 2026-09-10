@@ -6,6 +6,7 @@ import {
   approveUser,
   revokeUser,
   getAdminEmail,
+  syncAccessRecordsFromVault,
 } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,9 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Sync latest access records from Drive Vault if available
+    await syncAccessRecordsFromVault();
 
     return NextResponse.json({
       success: true,

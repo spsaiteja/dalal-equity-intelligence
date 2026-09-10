@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUpstoxSession } from '@/lib/upstox-storage';
 import { OrderPlacementRequest, OrderPlacementResponse } from '@/types/upstox';
 import { getSessionUser } from '@/lib/auth';
+import { executePaperOrder } from '@/lib/paper-trading';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,27 +90,8 @@ export async function POST(request: NextRequest) {
 
     // 2. Paper Trading Simulation Mode (or fallback if disconnected / requested)
     if (isPaperTrade || !isLiveConnected) {
-      const simulatedOrderId = `SIM-NSE-${Math.floor(100000 + Math.random() * 900000)}`;
-      const executionPrice = cleanPrice > 0 ? cleanPrice : 100.0;
-      const totalValue = parseFloat((qty * executionPrice).toFixed(2));
-
-      const status: 'COMPLETE' | 'AMO_QUEUED' = isAmo ? 'AMO_QUEUED' : 'COMPLETE';
-      const message = isAmo
-        ? `[Paper Trade] Dalal Street is currently closed. Simulated AMO ${transactionType} order for ${qty} shares of ${cleanSymbol} queued for tomorrow's 9:15 AM opening bell.`
-        : `[Paper Trade] Simulated ${transactionType} order executed successfully for ${qty} shares of ${cleanSymbol} at ₹${executionPrice.toLocaleString('en-IN')}.`;
-
-      const responseData: OrderPlacementResponse = {
-        success: true,
-        orderId: simulatedOrderId,
-        status,
-        message,
-        executionPrice,
-        totalValue,
-        timestamp: new Date().toISOString(),
-        isPaperTrade: true,
-      };
-
-      return NextResponse.json(responseData);
+      const paperResponse = await executePaperOrder(sessionUser.email, body);
+      return NextResponse.json(paperResponse, { status: paperResponse.success ? 200 : 400 });
     }
 
     // 3. Live Upstox Execution via /v2/order/place

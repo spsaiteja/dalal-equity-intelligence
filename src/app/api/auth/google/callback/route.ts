@@ -10,6 +10,7 @@ import {
   verifyApprovalPass,
   AuthUser,
   getAuthRedirectUri,
+  syncAccessRecordsFromVault,
 } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,9 @@ export async function GET(request: NextRequest) {
 
     const passCookie = request.cookies.get(APPROVAL_PASS_COOKIE)?.value;
     const hasValidPass = verifyApprovalPass(passCookie, email);
+
+    // Ensure server has latest approved users from Google Drive Vault
+    await syncAccessRecordsFromVault();
 
     const isAdmin = isMasterAdmin(email);
     const isApproved = isAdmin || hasValidPass || isUserApproved(email);

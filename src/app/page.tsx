@@ -193,37 +193,33 @@ export default function Dashboard() {
         }
       }
 
-      // 2. Only if the user has NEVER saved a watchlist locally, fetch defaults from server
-      if (!hasLocalWatchlist) {
-        fetch('/api/watchlist')
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success) {
-              if (data.watchlist && data.watchlist.length > 0) {
-                setWatchlist(data.watchlist);
-                localStorage.setItem(userWatchlistKey, JSON.stringify(data.watchlist));
-                localStorage.setItem('dalal_ai_watchlist', JSON.stringify(data.watchlist));
-              }
-              if (data.buckets && data.buckets.length > 0 && !localBucketsRaw) {
-                setBuckets(data.buckets);
-                localStorage.setItem('dalal_ai_buckets', JSON.stringify(data.buckets));
-              }
+      // 2. Fetch user's cloud-synced watchlist from server / Google Drive Vault
+      fetch('/api/watchlist')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.watchlist) && data.watchlist.length > 0) {
+            setWatchlist(data.watchlist);
+            localStorage.setItem(userWatchlistKey, JSON.stringify(data.watchlist));
+            localStorage.setItem('dalal_ai_watchlist', JSON.stringify(data.watchlist));
+            if (data.buckets && data.buckets.length > 0) {
+              setBuckets(data.buckets);
+              localStorage.setItem('dalal_ai_buckets', JSON.stringify(data.buckets));
             }
-          })
-          .catch(() => {});
-      } else {
-        // If local watchlist exists, sync it to the server in the background
-        try {
-          fetch('/api/watchlist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              watchlist: JSON.parse(localWatchlistRaw!),
-              buckets: localBucketsRaw ? JSON.parse(localBucketsRaw) : buckets,
-            }),
-          }).catch(() => {});
-        } catch {}
-      }
+          } else if (hasLocalWatchlist && localWatchlistRaw) {
+            // Push initial local watchlist to cloud vault if server was empty
+            try {
+              fetch('/api/watchlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  watchlist: JSON.parse(localWatchlistRaw),
+                  buckets: localBucketsRaw ? JSON.parse(localBucketsRaw) : buckets,
+                }),
+              }).catch(() => {});
+            } catch {}
+          }
+        })
+        .catch(() => {});
     } catch (e) {
       console.error('Watchlist init error:', e);
     }

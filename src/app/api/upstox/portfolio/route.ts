@@ -4,6 +4,7 @@ import { fetchLiveUpstoxHoldings, generateSamplePortfolio } from '@/lib/upstox-c
 import { PortfolioSummary, UpstoxHolding } from '@/types/upstox';
 import { analyzePortfolioAlerts } from '@/lib/portfolio-alerts';
 import { getSessionUser } from '@/lib/auth';
+import { getLivePaperPortfolio } from '@/lib/paper-trading';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,58 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Return realistic demo portfolio
+    // Check if user has active paper trading portfolio
+    const livePaper = await getLivePaperPortfolio(sessionUser.email);
+    const hasPaperActivity = livePaper.portfolio.holdings.length > 0 || livePaper.portfolio.orders.length > 0;
+
+    if (hasPaperActivity) {
+      const holdings: UpstoxHolding[] = livePaper.portfolio.holdings.map((h) => ({
+        isin: `INE_PAPER_${h.symbol.replace('.NS', '')}`,
+        trading_symbol: h.symbol.replace('.NS', ''),
+        company_name: h.companyName,
+        quantity: h.quantity,
+        average_price: h.averagePrice,
+        last_price: h.currentPrice,
+        close_price: parseFloat((h.currentPrice - (h.dayChange || 0)).toFixed(2)),
+        pnl: h.pnl,
+        pnl_percentage: h.pnlPercentage,
+        day_change: h.dayChange || 0,
+        day_change_percentage: h.dayChangePercentage || 0,
+        invested_value: h.investedValue,
+        current_value: h.currentValue,
+        exchange: 'NSE',
+        targetPrice: h.targetPrice,
+        stopLossPrice: h.stopLossPrice,
+      }));
+
+      const alertAnalysis = analyzePortfolioAlerts(holdings);
+
+      return NextResponse.json({
+        success: true,
+        isConnected: false,
+        isDemoMode: true,
+        isPaperTrading: true,
+        cashBalance: livePaper.portfolio.cashBalance,
+        initialCapital: livePaper.portfolio.initialCapital,
+        user_name: `${sessionUser.name || 'Investor'} (Paper Portfolio)`,
+        user_id: 'PAPER_PORTFOLIO',
+        summary: {
+          total_invested: livePaper.totalInvested,
+          current_value: livePaper.currentValue,
+          total_pnl: livePaper.totalPnl,
+          total_pnl_percentage: livePaper.totalPnlPercentage,
+          day_pnl: livePaper.dayPnl,
+          day_pnl_percentage: livePaper.dayPnlPercentage,
+          holdings_count: holdings.length,
+          is_demo_mode: true,
+        },
+        holdings: alertAnalysis.holdingsWithSignals,
+        alerts: alertAnalysis.alerts,
+        alertCounts: alertAnalysis.alertCounts,
+      });
+    }
+
+    // Return realistic demo portfolio if no paper trades yet
     const demoData = generateSamplePortfolio();
     const alertAnalysis = analyzePortfolioAlerts(demoData.holdings);
 
@@ -86,6 +138,9 @@ export async function GET(request: NextRequest) {
       success: true,
       isConnected: false,
       isDemoMode: true,
+      isPaperTrading: false,
+      cashBalance: livePaper.portfolio.cashBalance,
+      initialCapital: livePaper.portfolio.initialCapital,
       user_name: 'Demo Investor (Dalal Street)',
       user_id: 'DEMO_PORTFOLIO',
       summary: demoData.summary,

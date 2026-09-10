@@ -203,7 +203,11 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-white">
-                {isConnected ? 'Upstox Demat Account Synced' : 'Demo Portfolio Mode Active'}
+                {isConnected
+                  ? 'Upstox Demat Account Synced'
+                  : userName?.includes('Paper')
+                  ? 'Paper Trading Portfolio Active'
+                  : 'Demo Portfolio Mode Active'}
               </span>
               <span
                 className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
@@ -211,6 +215,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                     ? isAnalyticsToken
                       ? 'bg-blue-500/10 text-blue-300 border-blue-500/25'
                       : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                    : userName?.includes('Paper')
+                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/25'
                     : 'bg-blue-500/10 text-blue-300 border-blue-500/25'
                 }`}
               >
@@ -218,13 +224,17 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   ? isAnalyticsToken
                     ? '1-Year Analytics Sync'
                     : 'Live Broker Feed'
+                  : userName?.includes('Paper')
+                  ? 'Cloud Synced Simulation'
                   : 'Sample Holdings'}
               </span>
             </div>
             <p className="text-[11px] text-surface-muted mt-0.5">
               {isConnected
                 ? `Logged in as ${userName || 'Investor'}. Holdings auto-synced with Upstox API.`
-                : 'Showing institutional sample portfolio. Connect your Upstox account in Settings to sync your real Demat.'}
+                : userName?.includes('Paper')
+                ? `Active paper trading portfolio. Executed trades and virtual cash balance are securely synced across all your devices.`
+                : 'Showing institutional sample portfolio. Execute simulated trades from Screener/Watchlist or connect Upstox in Settings.'}
             </p>
           </div>
         </div>

@@ -18,7 +18,43 @@ function getDataDir(): string {
 }
 
 /**
- * Parses Service Account credentials from environment variables.
+ * Parses Upstash Redis REST credentials from environment variables.
+ */
+function getUpstashCredentials(): { url: string; token: string } | null {
+  const url = (process.env.UPSTASH_REDIS_REST_URL || 'https://proud-dogfish-111517.upstash.io').trim();
+  const token = (process.env.UPSTASH_REDIS_REST_TOKEN || 'gQAAAAAAAbOdAAIgcDE0MWVjNGMyM2YyNjU0MzJmYThiNGIzMGY0NTIwOWIxNw').trim();
+
+  if (url && token) {
+    return { url: url.replace(/\/$/, ''), token };
+  }
+  return null;
+}
+
+/**
+ * Returns true if the cloud vault is configured via Upstash Redis or Google Drive.
+ */
+export function isVaultConfigured(): boolean {
+  if (getUpstashCredentials()) return true;
+
+  const folderId = getVaultFolderId();
+  if (!folderId) return false;
+
+  return Boolean(getAdminRefreshToken() || getServiceAccountCredentials());
+}
+
+/**
+ * Returns which vault backend is currently active.
+ */
+export function getVaultBackendType(): 'upstash' | 'google_drive' | 'none' {
+  if (getUpstashCredentials()) return 'upstash';
+  if (getVaultFolderId() && (getAdminRefreshToken() || getServiceAccountCredentials())) {
+    return 'google_drive';
+  }
+  return 'none';
+}
+
+/**
+ * Parses Service Account credentials from environment variables (Google Drive fallback).
  */
 function getServiceAccountCredentials(): ServiceAccountCredentials | null {
   const folderId = getVaultFolderId();
@@ -62,7 +98,7 @@ export function getVaultFolderId(): string | null {
 }
 
 /**
- * Gets cached or configured OAuth Refresh Token for Master Admin.
+ * Gets cached or configured OAuth Refresh Token for Master Admin (Google Drive fallback).
  */
 export function getAdminRefreshToken(): string | null {
   if (process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.trim()) {
@@ -82,9 +118,6 @@ export function getAdminRefreshToken(): string | null {
   return null;
 }
 
-/**
- * Saves Admin OAuth Refresh Token to server disk cache so it persists immediately.
- */
 export function saveAdminRefreshToken(token: string): boolean {
   try {
     const dir = getDataDir();
@@ -99,19 +132,7 @@ export function saveAdminRefreshToken(token: string): boolean {
 }
 
 /**
- * Returns true if Google Drive Vault is configured with folder ID and either
- * OAuth Refresh Token or Service Account credentials.
- */
-export function isVaultConfigured(): boolean {
-  const folderId = getVaultFolderId();
-  if (!folderId) return false;
-
-  return Boolean(getAdminRefreshToken() || getServiceAccountCredentials());
-}
-
-/**
  * Generates an OAuth 2.0 access token using Master Admin's personal refresh token.
- * This runs under the Admin's 15 GB quota, avoiding all Service Account quota blocks.
  */
 async function getOAuthAccessToken(): Promise<string | null> {
   const refreshToken = getAdminRefreshToken();
@@ -228,24 +249,17 @@ async function getServiceAccountAccessToken(): Promise<string | null> {
   }
 }
 
-/**
- * Gets a valid access token. Prioritizes Master Admin OAuth (15 GB quota),
- * falling back to Service Account.
- */
-async function getVaultAccessToken(): Promise<string | null> {
-  // 1. Try OAuth Refresh Token first (recommended for personal Google Drive)
+async function getDriveAccessToken(): Promise<string | null> {
   const oauthToken = await getOAuthAccessToken();
   if (oauthToken) return oauthToken;
-
-  // 2. Fall back to Service Account
   return getServiceAccountAccessToken();
 }
 
 /**
  * Searches for a file by exact name inside the configured Google Drive Vault folder.
  */
-async function findVaultFile(filename: string): Promise<{ id: string; name: string } | null> {
-  const token = await getVaultAccessToken();
+async function findDriveFile(filename: string): Promise<{ id: string; name: string } | null> {
+  const token = await getDriveAccessToken();
   const folderId = getVaultFolderId();
   if (!token || !folderId) return null;
 
@@ -260,7 +274,6 @@ async function findVaultFile(filename: string): Promise<{ id: string; name: stri
     });
 
     if (!res.ok) {
-      console.warn(`Drive query failed for ${filename}: HTTP ${res.status}`);
       return null;
     }
 
@@ -270,20 +283,45 @@ async function findVaultFile(filename: string): Promise<{ id: string; name: stri
     }
     return null;
   } catch (error) {
-    console.error(`Error searching vault for ${filename}:`, error);
     return null;
   }
 }
 
 /**
- * Reads the text content of a file from the Google Drive Vault.
+ * Reads the text content of a file from the Cloud Vault.
+ * Prioritizes Upstash Redis (sub-10ms), falling back to Google Drive.
  */
 export async function readVaultFile(filename: string): Promise<string | null> {
-  const token = await getVaultAccessToken();
+  // 1. Prioritize Upstash Redis REST API
+  const upstash = getUpstashCredentials();
+  if (upstash) {
+    try {
+      const res = await fetch(upstash.url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${upstash.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(['GET', `vault:${filename}`]),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.result === 'string') {
+          return data.result;
+        }
+      }
+    } catch (err) {
+      console.warn(`Upstash read failed for ${filename}:`, err);
+    }
+  }
+
+  // 2. Fallback to Google Drive
+  const token = await getDriveAccessToken();
   if (!token) return null;
 
   try {
-    const file = await findVaultFile(filename);
+    const file = await findDriveFile(filename);
     if (!file) return null;
 
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`, {
@@ -291,35 +329,63 @@ export async function readVaultFile(filename: string): Promise<string | null> {
     });
 
     if (!res.ok) {
-      console.warn(`Failed to read file ${filename} (${file.id}): HTTP ${res.status}`);
       return null;
     }
 
     return await res.text();
   } catch (error) {
-    console.error(`Error reading vault file ${filename}:`, error);
     return null;
   }
 }
 
 /**
- * Writes text content to the Google Drive Vault.
- * Uses supportsAllDrives=true and handles both new file creation and content updates.
+ * Writes text content to the Cloud Vault.
+ * Prioritizes Upstash Redis (sub-10ms), falling back to Google Drive.
  */
 export async function writeVaultFile(
   filename: string,
   content: string,
   mimeType: string = 'text/plain'
 ): Promise<boolean> {
-  const token = await getVaultAccessToken();
+  let upstashSuccess = false;
+
+  // 1. Write to Upstash Redis
+  const upstash = getUpstashCredentials();
+  if (upstash) {
+    try {
+      const res = await fetch(upstash.url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${upstash.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(['SET', `vault:${filename}`, content]),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.result === 'OK') {
+          upstashSuccess = true;
+        }
+      }
+    } catch (err) {
+      console.error(`Upstash write error for ${filename}:`, err);
+    }
+  }
+
+  if (upstashSuccess) {
+    return true;
+  }
+
+  // 2. Fallback to Google Drive
+  const token = await getDriveAccessToken();
   const folderId = getVaultFolderId();
   if (!token || !folderId) return false;
 
   try {
-    const existingFile = await findVaultFile(filename);
+    const existingFile = await findDriveFile(filename);
 
     if (existingFile) {
-      // Update existing file content
       const updateUrl = `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=media&supportsAllDrives=true`;
       const res = await fetch(updateUrl, {
         method: 'PATCH',
@@ -332,7 +398,6 @@ export async function writeVaultFile(
 
       return res.ok;
     } else {
-      // Create new file via multipart upload
       const boundary = '-------DalalVaultBoundary' + Date.now();
       const metadata = JSON.stringify({
         name: filename,
@@ -361,7 +426,7 @@ export async function writeVaultFile(
       return res.ok;
     }
   } catch (error) {
-    console.error(`Error writing vault file ${filename}:`, error);
+    console.error(`Error writing to Google Drive vault file ${filename}:`, error);
     return false;
   }
 }

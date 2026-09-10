@@ -160,31 +160,74 @@ export default function Dashboard() {
         }
       }
 
-      // Fetch from disk storage
-      fetch('/api/watchlist')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            if (data.watchlist && data.watchlist.length > 0) {
-              setWatchlist(data.watchlist);
-              localStorage.setItem('dalal_ai_watchlist', JSON.stringify(data.watchlist));
-            }
-            if (data.buckets && data.buckets.length > 0) {
-              setBuckets(data.buckets);
-              localStorage.setItem('dalal_ai_buckets', JSON.stringify(data.buckets));
-            }
+      // 1. First, check LocalStorage for the user's saved watchlist & buckets
+      const userWatchlistKey = session?.user?.email ? `dalal_ai_watchlist_${session.user.email}` : 'dalal_ai_watchlist';
+      const localWatchlistRaw = typeof window !== 'undefined'
+        ? (localStorage.getItem(userWatchlistKey) || localStorage.getItem('dalal_ai_watchlist'))
+        : null;
+      const localBucketsRaw = typeof window !== 'undefined'
+        ? localStorage.getItem('dalal_ai_buckets')
+        : null;
+
+      let hasLocalWatchlist = false;
+      if (localWatchlistRaw) {
+        try {
+          const parsed = JSON.parse(localWatchlistRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setWatchlist(parsed);
+            hasLocalWatchlist = true;
           }
-        })
-        .catch(() => {
-          const savedWatchlist = localStorage.getItem('dalal_ai_watchlist');
-          if (savedWatchlist) setWatchlist(JSON.parse(savedWatchlist));
-          const savedBuckets = localStorage.getItem('dalal_ai_buckets');
-          if (savedBuckets) setBuckets(JSON.parse(savedBuckets));
-        });
+        } catch (e) {
+          console.error('Error parsing local watchlist:', e);
+        }
+      }
+
+      if (localBucketsRaw) {
+        try {
+          const parsedBuckets = JSON.parse(localBucketsRaw);
+          if (Array.isArray(parsedBuckets) && parsedBuckets.length > 0) {
+            setBuckets(parsedBuckets);
+          }
+        } catch (e) {
+          console.error('Error parsing local buckets:', e);
+        }
+      }
+
+      // 2. Only if the user has NEVER saved a watchlist locally, fetch defaults from server
+      if (!hasLocalWatchlist) {
+        fetch('/api/watchlist')
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              if (data.watchlist && data.watchlist.length > 0) {
+                setWatchlist(data.watchlist);
+                localStorage.setItem(userWatchlistKey, JSON.stringify(data.watchlist));
+                localStorage.setItem('dalal_ai_watchlist', JSON.stringify(data.watchlist));
+              }
+              if (data.buckets && data.buckets.length > 0 && !localBucketsRaw) {
+                setBuckets(data.buckets);
+                localStorage.setItem('dalal_ai_buckets', JSON.stringify(data.buckets));
+              }
+            }
+          })
+          .catch(() => {});
+      } else {
+        // If local watchlist exists, sync it to the server in the background
+        try {
+          fetch('/api/watchlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              watchlist: JSON.parse(localWatchlistRaw!),
+              buckets: localBucketsRaw ? JSON.parse(localBucketsRaw) : buckets,
+            }),
+          }).catch(() => {});
+        } catch {}
+      }
     } catch (e) {
       console.error('Watchlist init error:', e);
     }
-  }, [session?.isApproved]);
+  }, [session?.isApproved, session?.user?.email]);
 
   // Fetch Market Indices
   const loadIndices = useCallback(async () => {
@@ -280,14 +323,22 @@ export default function Dashboard() {
   // Helper to sync watchlist changes to disk & localStorage
   const persistWatchlist = (updatedList: WatchlistItem[], updatedBuckets?: string[]) => {
     setWatchlist(updatedList);
+    const userWatchlistKey = session?.user?.email ? `dalal_ai_watchlist_${session.user.email}` : 'dalal_ai_watchlist';
+    localStorage.setItem(userWatchlistKey, JSON.stringify(updatedList));
     localStorage.setItem('dalal_ai_watchlist', JSON.stringify(updatedList));
+
+    const effectiveBuckets = updatedBuckets || buckets;
+    if (updatedBuckets) {
+      setBuckets(updatedBuckets);
+    }
+    localStorage.setItem('dalal_ai_buckets', JSON.stringify(effectiveBuckets));
 
     fetch('/api/watchlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         watchlist: updatedList,
-        buckets: updatedBuckets || buckets,
+        buckets: effectiveBuckets,
       }),
     }).catch((err) => console.error('Failed to save watchlist to disk:', err));
   };

@@ -25,6 +25,8 @@ export async function runRiskGuardianAgent(
       `Mandatory stop-loss pegged at 5-6% below current price to protect institutional capital.`,
       `Cap single-stock allocation to 6% of total portfolio value to prevent sector clustering.`,
     ],
+    isFallback: true,
+    fallbackReason: !client ? 'Gemini API key not configured; using quantitative risk engine.' : 'LLM risk analysis timed out or exhausted retries.',
   };
 
   if (!client) return fallback;
@@ -46,12 +48,12 @@ Evaluate DOWNSIDE RISK and CAPITAL PROTECTION. Return valid JSON:
 }
 `;
 
-  const parsed = await generateGeminiJson(client, prompt, 3500);
+  const parsed = await generateGeminiJson(client, prompt, 8500);
   if (!parsed) return fallback;
 
   const validated = validateAndRepairRiskGuardian(parsed);
   if (validated.success && validated.data) {
-    return validated.data;
+    return { ...validated.data, isFallback: false };
   }
   return fallback;
 }

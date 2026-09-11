@@ -27,6 +27,8 @@ export async function runFundamentalAgent(
       `Core business generates reliable free cash flows and maintains defensible competitive moats.`,
       `FII/DII institutional ownership provides long-term valuation anchor.`,
     ],
+    isFallback: true,
+    fallbackReason: !client ? 'Gemini API key not configured; using quantitative valuation model.' : 'LLM fundamental analysis timed out or exhausted retries.',
   };
 
   if (!client) return fallback;
@@ -47,12 +49,12 @@ Evaluate valuation. Return valid JSON:
 }
 `;
 
-  const parsed = await generateGeminiJson(client, prompt, 3500);
+  const parsed = await generateGeminiJson(client, prompt, 8500);
   if (!parsed) return fallback;
 
   const validated = validateAndRepairFundamental(parsed);
   if (validated.success && validated.data) {
-    return validated.data;
+    return { ...validated.data, isFallback: false };
   }
   return fallback;
 }

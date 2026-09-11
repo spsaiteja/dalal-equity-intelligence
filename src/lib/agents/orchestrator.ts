@@ -107,6 +107,8 @@ function getSentinelFallback(quote: StockQuote): SentinelReport {
       `14-Day RSI is hovering at ${quote.rsi14 ?? 'N/A'}, reflecting healthy accumulation.`,
       quote.ema50 ? `Price is within ${Math.abs(quote.price - quote.ema50).toFixed(1)} pts of the 50-day EMA.` : 'Consolidation channel.',
     ],
+    isFallback: true,
+    fallbackReason: 'Quantitative technical model fallback (zero LLM latency / rate-limit shield)',
   };
 }
 
@@ -130,6 +132,8 @@ function getFundamentalFallback(quote: StockQuote): FundamentalReport {
       'Core business generates reliable free cash flows and maintains defensible competitive moats.',
       'Institutional ownership provides long-term valuation anchor.',
     ],
+    isFallback: true,
+    fallbackReason: 'Quantitative valuation model fallback (zero LLM latency / rate-limit shield)',
   };
 }
 
@@ -152,6 +156,8 @@ function getNewsScoutFallback(quote: StockQuote, recentNews: any[]): NewsScoutRe
       `News sentiment indicates steady institutional interest for ${quote.name}.`,
       recentNews.length > 0 ? `Latest report: "${recentNews[0].title}"` : 'No negative regulatory or governance flags detected.',
     ],
+    isFallback: true,
+    fallbackReason: 'Heuristic news analysis fallback (zero LLM latency / rate-limit shield)',
   };
 }
 
@@ -173,6 +179,8 @@ function getRiskGuardianFallback(quote: StockQuote): RiskGuardianReport {
       'Mandatory stop-loss pegged at 5-6% below current price to protect institutional capital.',
       'Cap single-stock allocation to 6% of total portfolio value to prevent sector clustering.',
     ],
+    isFallback: true,
+    fallbackReason: 'Quantitative risk assessment fallback (zero LLM latency / rate-limit shield)',
   };
 }
 

@@ -33,6 +33,8 @@ export async function runSentinelAgent(
       `14-Day RSI is hovering at ${quote.rsi14 ?? 'N/A'}, reflecting healthy accumulation.`,
       quote.ema50 ? `Price is within ${Math.abs(quote.price - quote.ema50).toFixed(1)} pts of the 50-day EMA.` : 'Consolidation channel.',
     ],
+    isFallback: true,
+    fallbackReason: !client ? 'Gemini API key not configured; using quantitative rule engine.' : 'LLM deliberation timed out or exhausted retries.',
   };
 
   if (!client) return fallback;
@@ -57,12 +59,12 @@ Analyze TECHNICAL momentum. Return valid JSON:
 }
 `;
 
-  const parsed = await generateGeminiJson(client, prompt, 3500);
+  const parsed = await generateGeminiJson(client, prompt, 8500);
   if (!parsed) return fallback;
 
   const validated = validateAndRepairSentinel(parsed);
   if (validated.success && validated.data) {
-    return validated.data;
+    return { ...validated.data, isFallback: false };
   }
   return fallback;
 }

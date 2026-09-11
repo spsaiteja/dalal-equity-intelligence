@@ -10,6 +10,8 @@ export interface BaseAgentReport {
   confidenceScore: number; // 0 to 100%
   headlineTakeaway: string;
   arguments: string[];
+  isFallback?: boolean;
+  fallbackReason?: string;
 }
 
 export interface SentinelReport extends BaseAgentReport {

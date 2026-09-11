@@ -230,6 +230,11 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                           <Shield className="h-4 w-4" />
                         </div>
                         <span className="text-xs font-bold text-white">Agent Sentinel</span>
+                        {consensus.agents.sentinel.isFallback && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" title={consensus.agents.sentinel.fallbackReason}>
+                            Fallback
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
                         {consensus.agents.sentinel.stance}
@@ -269,6 +274,11 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                           <BarChart3 className="h-4 w-4" />
                         </div>
                         <span className="text-xs font-bold text-white">Agent Fundamentalist</span>
+                        {consensus.agents.fundamental.isFallback && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" title={consensus.agents.fundamental.fallbackReason}>
+                            Fallback
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         {consensus.agents.fundamental.stance}
@@ -308,6 +318,11 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                           <Newspaper className="h-4 w-4" />
                         </div>
                         <span className="text-xs font-bold text-white">Agent News Scout</span>
+                        {consensus.agents.newsScout.isFallback && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" title={consensus.agents.newsScout.fallbackReason}>
+                            Fallback
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                         {consensus.agents.newsScout.stance}
@@ -345,6 +360,11 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                           <AlertOctagon className="h-4 w-4" />
                         </div>
                         <span className="text-xs font-bold text-white">Agent Risk Guardian</span>
+                        {consensus.agents.riskGuardian.isFallback && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" title={consensus.agents.riskGuardian.fallbackReason}>
+                            Fallback
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
                         {consensus.agents.riskGuardian.riskRating}

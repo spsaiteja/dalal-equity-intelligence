@@ -15,6 +15,8 @@ export const BaseAgentReportSchema = z.object({
   confidenceScore: z.number().min(0).max(100),
   headlineTakeaway: z.string().min(3),
   arguments: z.array(z.string()).min(1),
+  isFallback: z.boolean().optional(),
+  fallbackReason: z.string().optional(),
 });
 
 export const KeyLevelsSchema = z.object({

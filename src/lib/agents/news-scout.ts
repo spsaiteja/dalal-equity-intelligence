@@ -29,6 +29,8 @@ export async function runNewsScoutAgent(
       `News sentiment indicates steady retail and institutional interest for ${quote.name}.`,
       recentNews.length > 0 ? `Latest report: "${recentNews[0].title}"` : 'No negative regulatory or governance flags detected.',
     ],
+    isFallback: true,
+    fallbackReason: !client ? 'Gemini API key not configured; using heuristic news baseline.' : 'LLM news analysis timed out or exhausted retries.',
   };
 
   if (!client) return fallback;
@@ -49,12 +51,12 @@ Analyze NEWS SENTIMENT. Return valid JSON:
 }
 `;
 
-  const parsed = await generateGeminiJson(client, prompt, 3500);
+  const parsed = await generateGeminiJson(client, prompt, 8500);
   if (!parsed) return fallback;
 
   const validated = validateAndRepairNewsScout(parsed);
   if (validated.success && validated.data) {
-    return validated.data;
+    return { ...validated.data, isFallback: false };
   }
   return fallback;
 }

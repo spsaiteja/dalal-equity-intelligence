@@ -349,9 +349,20 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
   - *String Array Coercion*: Converts newline or semicolon-delimited text blocks into typed string arrays.
   - *Fail-Soft Isolation*: `safeParse()` prevents any malformed LLM response from crashing API routes, falling back to deterministic baselines seamlessly.
 
+### Exponential Backoff, Retry Logic & Fault Tolerance (`gemini-helper.ts`):
+- **Intelligent Retry Engine**:
+  - `maxRetries`: Up to 3 retry attempts per agent deliberation.
+  - `calculateBackoff()`: Exponential progression (`initialDelay: 500ms`, `maxDelay: 4,000ms`) with 30% full jitter to prevent thundering herd spikes.
+  - `isRetryableError()`: Intelligently detects HTTP 429 (rate-limiting), 500/502/503 (server overloads), `RESOURCE_EXHAUSTED`, and timeouts.
+- **Timeout Protection**: Strict per-agent execution budget (8,500ms) prevents hanging sockets from stalling user sessions.
+- **Transparent Fallback Generator**:
+  - When LLM calls time out or exhaust all retries, the engine immediately yields a deterministic, quantitative baseline report.
+  - Sets `isFallback: true` and a human-readable `fallbackReason`.
+  - UI automatically displays an amber `Fallback` warning chip on the affected department card in [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar (Run ID, Latency, Model, Tools Executed, Agent badges), and interactive tabs to read the unvarnished arguments of each agent.
+- Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar (Run ID, Latency, Model, Tools Executed, Agent badges), amber fallback chips on rate-limited agents, and interactive tabs to read the unvarnished arguments of each agent.
 
 ---
 

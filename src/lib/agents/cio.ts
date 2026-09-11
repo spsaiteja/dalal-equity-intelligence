@@ -1,13 +1,24 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { StockQuote } from '@/types/stock';
 import { CouncilConsensus } from '@/types/agent';
+import { orchestrateCouncilDeliberation } from './orchestrator';
+
+export async function runCouncilDeliberation(
+  quote: StockQuote,
+  recentNews: any[] = [],
+  customApiKey?: string
+): Promise<CouncilConsensus> {
+  return orchestrateCouncilDeliberation(quote, recentNews, customApiKey);
+}
+
+/* Backwards-compatible legacy implementation reference below */
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { runSentinelAgent } from './sentinel';
 import { runFundamentalAgent } from './fundamental';
 import { runNewsScoutAgent } from './news-scout';
 import { runRiskGuardianAgent } from './risk-guardian';
 import { generateGeminiJson } from '../gemini-helper';
 
-export async function runCouncilDeliberation(
+export async function runDirectCouncilDeliberation(
   quote: StockQuote,
   recentNews: any[] = [],
   customApiKey?: string

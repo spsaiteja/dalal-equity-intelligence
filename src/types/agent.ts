@@ -68,4 +68,24 @@ export interface CouncilConsensus {
     riskGuardian: RiskGuardianReport;
   };
   timestamp: string;
+  metadata?: OrchestrationMetadata;
 }
+
+export type AgentExecutionStatus = 'success' | 'fallback' | 'failed';
+
+export interface OrchestrationMetadata {
+  runId: string;
+  executionTimeMs: number;
+  timestamp: string;
+  agentsStatus: {
+    sentinel: AgentExecutionStatus;
+    fundamental: AgentExecutionStatus;
+    newsScout: AgentExecutionStatus;
+    riskGuardian: AgentExecutionStatus;
+    cio: AgentExecutionStatus;
+  };
+  model: string;
+  promptVersion: string;
+  disclaimer: string;
+}
+

@@ -377,6 +377,42 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Orchestration Observability Bar */}
+              {consensus.metadata && (
+                <div className="bg-surface/40 border border-surface-border/60 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="flex items-center gap-1.5 text-surface-muted font-mono text-[11px]">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Run ID: <strong className="text-white font-mono">{consensus.metadata.runId.slice(0, 8)}...</strong>
+                    </span>
+                    <span className="text-surface-border">|</span>
+                    <span className="text-surface-muted text-[11px]">
+                      Latency: <strong className="text-white">{consensus.metadata.executionTimeMs}ms</strong>
+                    </span>
+                    <span className="text-surface-border">|</span>
+                    <span className="text-surface-muted text-[11px]">
+                      Model: <strong className="text-purple-400">{consensus.metadata.model}</strong>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-[10px] flex-wrap">
+                    <span className="text-surface-muted font-bold mr-1">Agents:</span>
+                    {Object.entries(consensus.metadata.agentsStatus).map(([agent, status]) => (
+                      <span
+                        key={agent}
+                        className={`px-1.5 py-0.5 rounded uppercase font-bold tracking-wider ${
+                          status === 'success'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        }`}
+                      >
+                        {agent}: {status}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-center text-sm text-surface-muted py-8">

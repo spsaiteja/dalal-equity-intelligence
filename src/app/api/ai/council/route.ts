@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchStockQuote, fetchStockNews } from '@/lib/yahoo-client';
-import { runCouncilDeliberation } from '@/lib/agents/cio';
+import { orchestrateCouncilDeliberation } from '@/lib/agents/orchestrator';
 import { getSessionUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -40,11 +40,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const consensus = await runCouncilDeliberation(quote, news, apiKey);
+    const consensus = await orchestrateCouncilDeliberation(quote, news, apiKey);
 
     return NextResponse.json({
       success: true,
       data: consensus,
+      metadata: consensus.metadata,
     });
   } catch (error: any) {
     console.error('Error in AI Council route:', error);

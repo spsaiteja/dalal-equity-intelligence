@@ -323,9 +323,16 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
    - *Focus*: Resolves conflicts between Sentinel and The Fundamentalist, weighs Risk Guardian's warnings, and issues a singular binding trade plan.
    - *Output*: Verdict (`STRONG_BUY`, `BUY`, `HOLD`, `SELL`), Overall Conviction Score (1-10), executive directive, and actionable entry strategy (`target1`, `target2`, `stopLoss`).
 
+### The Orchestration Engine (`orchestrator.ts`):
+- **Central Coordinator**: [`src/lib/agents/orchestrator.ts`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/lib/agents/orchestrator.ts)
+- **Lifecycle Context**: Generates unique `runId` (UUID v4), tracks per-agent and total execution latency in milliseconds, and captures execution statuses (`success`, `fallback`, `failed`).
+- **Parallel Fault-Tolerant Execution**: Employs `Promise.allSettled` to execute Sentinel, Fundamentalist, News Scout, and Risk Guardian concurrently. Failure or rate-limiting of any single agent does not crash the session; safe deterministic baselines are supplied seamlessly.
+- **Strict Runtime Schema Validation**: Guard functions (`isValidSentinelReport`, `isValidFundamentalReport`, etc.) ensure every agent's payload strictly conforms to TypeScript interfaces before synthesis.
+- **Observability Metadata**: Returned via `OrchestrationMetadata` alongside consensus, rendering a live telemetry bar (Run ID, Latency, Model, and agent status badges) in the UI.
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, debate summary, CIO trade plan card, and interactive tabs to read the unvarnished arguments of each agent.
+- Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar, and interactive tabs to read the unvarnished arguments of each agent.
 
 ---
 

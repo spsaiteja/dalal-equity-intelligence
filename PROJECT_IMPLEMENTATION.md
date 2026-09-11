@@ -328,11 +328,22 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
 - **Lifecycle Context**: Generates unique `runId` (UUID v4), tracks per-agent and total execution latency in milliseconds, and captures execution statuses (`success`, `fallback`, `failed`).
 - **Parallel Fault-Tolerant Execution**: Employs `Promise.allSettled` to execute Sentinel, Fundamentalist, News Scout, and Risk Guardian concurrently. Failure or rate-limiting of any single agent does not crash the session; safe deterministic baselines are supplied seamlessly.
 - **Strict Runtime Schema Validation**: Guard functions (`isValidSentinelReport`, `isValidFundamentalReport`, etc.) ensure every agent's payload strictly conforms to TypeScript interfaces before synthesis.
-- **Observability Metadata**: Returned via `OrchestrationMetadata` alongside consensus, rendering a live telemetry bar (Run ID, Latency, Model, and agent status badges) in the UI.
+- **Observability Metadata**: Returned via `OrchestrationMetadata` alongside consensus, rendering a live telemetry bar (Run ID, Latency, Model, executed tool count, and agent status badges) in the UI.
+
+### Discrete AI Tools Layer (`src/lib/agents/tools/`):
+- **Tool Architecture**: Modular, strongly typed tools conforming to the agentic tool-use standard with parameter schemas and runtime validation.
+- **Callable Tools**:
+  1. `get_stock_quote`: Real-time CMP, 52W high/low, discount %, volume, and day range.
+  2. `get_historical_candles`: Multi-timeframe daily OHLCV candlestick bars for chart patterns.
+  3. `get_technical_indicators`: 14-period RSI, 50-EMA, 200-EMA, immediate & major support/resistance levels.
+  4. `get_company_financials`: Fundamental valuation status, P/E ratio, and estimated margin of safety %.
+  5. `search_market_news`: Google News RSS financial search with automated keyword sentiment polarity analysis.
+  6. `calculate_risk_metrics`: Quantitative stop-loss buffer %, risk-to-reward ratio, and mandated portfolio position allocation %.
+- **Gemini Function Calling Schema**: `getGeminiToolDeclarations()` formats all registered tools into OpenAI/Gemini function declaration specifications for true agent tool-use.
 
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar, and interactive tabs to read the unvarnished arguments of each agent.
+- Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar (Run ID, Latency, Model, Tools Executed, Agent badges), and interactive tabs to read the unvarnished arguments of each agent.
 
 ---
 

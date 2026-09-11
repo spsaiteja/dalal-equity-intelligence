@@ -87,5 +87,12 @@ export interface OrchestrationMetadata {
   model: string;
   promptVersion: string;
   disclaimer: string;
+  toolCallsCount?: number;
+  toolCalls?: Array<{
+    toolName: string;
+    durationMs: number;
+    status: 'success' | 'error';
+    error?: string;
+  }>;
 }
 

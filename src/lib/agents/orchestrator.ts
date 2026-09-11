@@ -15,6 +15,7 @@ import { runFundamentalAgent } from './fundamental';
 import { runNewsScoutAgent } from './news-scout';
 import { runRiskGuardianAgent } from './risk-guardian';
 import { generateGeminiJson } from '../gemini-helper';
+import { executeTool, ToolCallResult, listAvailableTools } from './tools';
 
 /**
  * Execution Context for the AI Deliberation Run
@@ -25,6 +26,7 @@ export interface ExecutionContext {
   symbol: string;
   quote: StockQuote;
   news: any[];
+  toolCalls: ToolCallResult[];
   agentOutputs: {
     sentinel?: SentinelReport;
     fundamental?: FundamentalReport;
@@ -226,6 +228,7 @@ export async function orchestrateCouncilDeliberation(
     symbol: quote.symbol,
     quote,
     news: recentNews,
+    toolCalls: [],
     agentOutputs: {},
     metrics: {},
     status: {
@@ -236,6 +239,18 @@ export async function orchestrateCouncilDeliberation(
       cio: 'failed',
     },
   };
+
+  // -------------------------------------------------------
+  // Step 1: Execute Discrete AI Tools Concurrently
+  // -------------------------------------------------------
+  const [quoteToolRes, techToolRes, finToolRes, newsToolRes, riskToolRes] = await Promise.all([
+    executeTool('get_stock_quote', { symbol: quote.symbol }),
+    executeTool('get_technical_indicators', { symbol: quote.symbol }),
+    executeTool('get_company_financials', { symbol: quote.symbol }),
+    executeTool('search_market_news', { query: quote.name || quote.symbol, limit: 5 }),
+    executeTool('calculate_risk_metrics', { symbol: quote.symbol, price: quote.price }),
+  ]);
+  context.toolCalls.push(quoteToolRes, techToolRes, finToolRes, newsToolRes, riskToolRes);
 
   // Helper to wrap agent execution with latency tracking and fail-soft catch
   async function timedExecution<T>(
@@ -260,7 +275,7 @@ export async function orchestrateCouncilDeliberation(
   }
 
   // -------------------------------------------------------
-  // Step 1: Parallel Execution of 4 Department Agents
+  // Step 2: Parallel Execution of 4 Department Agents
   // -------------------------------------------------------
   const [sentinelResult, fundamentalResult, newsScoutResult, riskGuardianResult] = await Promise.allSettled([
     timedExecution(() => runSentinelAgent(quote, client), isValidSentinelReport, getSentinelFallback(quote)),
@@ -406,8 +421,15 @@ Return STRICT valid JSON:
     timestamp,
     agentsStatus: context.status,
     model: client ? 'gemini-1.5-flash / ensemble-v1' : 'rule-engine-fallback',
-    promptVersion: '1.2.0-orchestrated',
+    promptVersion: '1.3.0-agentic-tools',
     disclaimer: 'DalalAI Autonomous Research Committee is for informational and educational purposes only. Not SEBI registered investment advice.',
+    toolCallsCount: context.toolCalls.length,
+    toolCalls: context.toolCalls.map((tc) => ({
+      toolName: tc.toolName,
+      durationMs: tc.durationMs,
+      status: tc.status,
+      error: tc.error,
+    })),
   };
 
   return {

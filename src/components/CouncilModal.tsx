@@ -394,6 +394,14 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                     <span className="text-surface-muted text-[11px]">
                       Model: <strong className="text-purple-400">{consensus.metadata.model}</strong>
                     </span>
+                    {consensus.metadata.toolCallsCount !== undefined && (
+                      <>
+                        <span className="text-surface-border">|</span>
+                        <span className="text-surface-muted text-[11px]">
+                          Tools: <strong className="text-cyan-400 font-mono">{consensus.metadata.toolCallsCount} executed</strong>
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5 text-[10px] flex-wrap">

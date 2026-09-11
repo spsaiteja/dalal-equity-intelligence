@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { StockQuote } from '@/types/stock';
 import { RiskGuardianReport } from '@/types/agent';
 import { generateGeminiJson } from '../gemini-helper';
+import { validateAndRepairRiskGuardian } from './schema-validator';
 
 export async function runRiskGuardianAgent(
   quote: StockQuote,
@@ -48,16 +49,9 @@ Evaluate DOWNSIDE RISK and CAPITAL PROTECTION. Return valid JSON:
   const parsed = await generateGeminiJson(client, prompt, 3500);
   if (!parsed) return fallback;
 
-  return {
-    agentName: 'Agent Risk Guardian (Capital Preservation)',
-    role: 'RISK_GUARDIAN',
-    stance: parsed.stance || fallback.stance,
-    confidenceScore: parsed.confidenceScore || fallback.confidenceScore,
-    headlineTakeaway: parsed.headlineTakeaway || fallback.headlineTakeaway,
-    riskRating: parsed.riskRating || fallback.riskRating,
-    recommendedMaxPositionPercent: parsed.recommendedMaxPositionPercent || fallback.recommendedMaxPositionPercent,
-    mandatedStopLoss: parsed.mandatedStopLoss || fallback.mandatedStopLoss,
-    riskRewardAssessment: parsed.riskRewardAssessment || fallback.riskRewardAssessment,
-    arguments: parsed.arguments || fallback.arguments,
-  };
+  const validated = validateAndRepairRiskGuardian(parsed);
+  if (validated.success && validated.data) {
+    return validated.data;
+  }
+  return fallback;
 }

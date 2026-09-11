@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { StockQuote } from '@/types/stock';
 import { FundamentalReport } from '@/types/agent';
 import { generateGeminiJson } from '../gemini-helper';
+import { validateAndRepairFundamental } from './schema-validator';
 
 export async function runFundamentalAgent(
   quote: StockQuote,
@@ -49,15 +50,9 @@ Evaluate valuation. Return valid JSON:
   const parsed = await generateGeminiJson(client, prompt, 3500);
   if (!parsed) return fallback;
 
-  return {
-    agentName: 'Agent Fundamentalist (Valuation & Financials)',
-    role: 'FUNDAMENTAL',
-    stance: parsed.stance || fallback.stance,
-    confidenceScore: parsed.confidenceScore || fallback.confidenceScore,
-    headlineTakeaway: parsed.headlineTakeaway || fallback.headlineTakeaway,
-    valuationStatus: parsed.valuationStatus || fallback.valuationStatus,
-    estimatedMarginOfSafetyPercent: parsed.estimatedMarginOfSafetyPercent ?? fallback.estimatedMarginOfSafetyPercent,
-    balanceSheetHealth: parsed.balanceSheetHealth || fallback.balanceSheetHealth,
-    arguments: parsed.arguments || fallback.arguments,
-  };
+  const validated = validateAndRepairFundamental(parsed);
+  if (validated.success && validated.data) {
+    return validated.data;
+  }
+  return fallback;
 }

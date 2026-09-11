@@ -341,6 +341,14 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
   6. `calculate_risk_metrics`: Quantitative stop-loss buffer %, risk-to-reward ratio, and mandated portfolio position allocation %.
 - **Gemini Function Calling Schema**: `getGeminiToolDeclarations()` formats all registered tools into OpenAI/Gemini function declaration specifications for true agent tool-use.
 
+### Runtime Schema Validation & Self-Repair Layer (`schemas.ts` & `schema-validator.ts`):
+- **Zod Schemas**: Strict runtime validation schemas (`SentinelReportSchema`, `FundamentalReportSchema`, `NewsScoutReportSchema`, `RiskGuardianReportSchema`, `CIOConsensusSchema`) enforcing boundaries, types, and required fields on LLM payloads.
+- **Resilient Auto-Repair Pipeline**:
+  - *Numeric Coercion*: Automatically converts stringified numbers (e.g. `"92.5%"` -> `92.5`) with range bounding.
+  - *Enum Normalization*: Resolves case/formatting variations (e.g. `"strong_bullish"` -> `'Strong Bullish'`, `"buy"` -> `'Bullish'`).
+  - *String Array Coercion*: Converts newline or semicolon-delimited text blocks into typed string arrays.
+  - *Fail-Soft Isolation*: `safeParse()` prevents any malformed LLM response from crashing API routes, falling back to deterministic baselines seamlessly.
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
 - Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar (Run ID, Latency, Model, Tools Executed, Agent badges), and interactive tabs to read the unvarnished arguments of each agent.

@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { StockQuote } from '@/types/stock';
 import { SentinelReport } from '@/types/agent';
 import { generateGeminiJson } from '../gemini-helper';
+import { validateAndRepairSentinel } from './schema-validator';
 
 export async function runSentinelAgent(
   quote: StockQuote,
@@ -59,14 +60,9 @@ Analyze TECHNICAL momentum. Return valid JSON:
   const parsed = await generateGeminiJson(client, prompt, 3500);
   if (!parsed) return fallback;
 
-  return {
-    agentName: 'Agent Sentinel (Technicals & Momentum)',
-    role: 'SENTINEL',
-    stance: parsed.stance || fallback.stance,
-    confidenceScore: parsed.confidenceScore || fallback.confidenceScore,
-    headlineTakeaway: parsed.headlineTakeaway || fallback.headlineTakeaway,
-    trendAssessment: parsed.trendAssessment || fallback.trendAssessment,
-    keyLevels: parsed.keyLevels || fallback.keyLevels,
-    arguments: parsed.arguments || fallback.arguments,
-  };
+  const validated = validateAndRepairSentinel(parsed);
+  if (validated.success && validated.data) {
+    return validated.data;
+  }
+  return fallback;
 }

@@ -16,6 +16,13 @@ import { runNewsScoutAgent } from './news-scout';
 import { runRiskGuardianAgent } from './risk-guardian';
 import { generateGeminiJson } from '../gemini-helper';
 import { executeTool, ToolCallResult, listAvailableTools } from './tools';
+import {
+  validateAndRepairSentinel,
+  validateAndRepairFundamental,
+  validateAndRepairNewsScout,
+  validateAndRepairRiskGuardian,
+  validateAndRepairCIOConsensus,
+} from './schema-validator';
 
 /**
  * Execution Context for the AI Deliberation Run
@@ -51,60 +58,23 @@ export interface ExecutionContext {
 }
 
 // ---------------------------------------------------------
-// Strict Schema Validators
+// Strict Runtime Schema Validators (Powered by Zod)
 // ---------------------------------------------------------
 
 export function isValidSentinelReport(report: any): report is SentinelReport {
-  return (
-    Boolean(report) &&
-    report.role === 'SENTINEL' &&
-    typeof report.stance === 'string' &&
-    typeof report.confidenceScore === 'number' &&
-    typeof report.headlineTakeaway === 'string' &&
-    Array.isArray(report.arguments) &&
-    Boolean(report.keyLevels) &&
-    typeof report.keyLevels.immediateSupport === 'string' &&
-    typeof report.keyLevels.immediateResistance === 'string'
-  );
+  return validateAndRepairSentinel(report).success;
 }
 
 export function isValidFundamentalReport(report: any): report is FundamentalReport {
-  return (
-    Boolean(report) &&
-    report.role === 'FUNDAMENTAL' &&
-    typeof report.stance === 'string' &&
-    typeof report.confidenceScore === 'number' &&
-    typeof report.headlineTakeaway === 'string' &&
-    typeof report.valuationStatus === 'string' &&
-    typeof report.estimatedMarginOfSafetyPercent === 'number' &&
-    Array.isArray(report.arguments)
-  );
+  return validateAndRepairFundamental(report).success;
 }
 
 export function isValidNewsScoutReport(report: any): report is NewsScoutReport {
-  return (
-    Boolean(report) &&
-    report.role === 'NEWS_SCOUT' &&
-    typeof report.stance === 'string' &&
-    typeof report.confidenceScore === 'number' &&
-    typeof report.headlineTakeaway === 'string' &&
-    typeof report.sentimentPolarity === 'number' &&
-    Array.isArray(report.catalystsIdentified) &&
-    Array.isArray(report.headwindWarnings)
-  );
+  return validateAndRepairNewsScout(report).success;
 }
 
 export function isValidRiskGuardianReport(report: any): report is RiskGuardianReport {
-  return (
-    Boolean(report) &&
-    report.role === 'RISK_GUARDIAN' &&
-    typeof report.stance === 'string' &&
-    typeof report.confidenceScore === 'number' &&
-    typeof report.headlineTakeaway === 'string' &&
-    typeof report.riskRating === 'string' &&
-    typeof report.recommendedMaxPositionPercent === 'number' &&
-    typeof report.mandatedStopLoss === 'string'
-  );
+  return validateAndRepairRiskGuardian(report).success;
 }
 
 // ---------------------------------------------------------
@@ -391,16 +361,19 @@ Return STRICT valid JSON:
 }
 `;
       const parsed = await generateGeminiJson(client, prompt, 3800);
-      if (parsed && parsed.cioVerdict && parsed.cioExecutiveDirective) {
-        finalConsensus = {
-          ...baselineConsensus,
-          cioVerdict: parsed.cioVerdict || baselineConsensus.cioVerdict,
-          overallScore: parsed.overallScore || baselineConsensus.overallScore,
-          debateSummary: parsed.debateSummary || baselineConsensus.debateSummary,
-          cioExecutiveDirective: parsed.cioExecutiveDirective || baselineConsensus.cioExecutiveDirective,
-          tradeActionPlan: parsed.tradeActionPlan || baselineConsensus.tradeActionPlan,
-        };
-        cioStatus = 'success';
+      if (parsed) {
+        const validated = validateAndRepairCIOConsensus(parsed);
+        if (validated.success && validated.data) {
+          finalConsensus = {
+            ...baselineConsensus,
+            cioVerdict: validated.data.cioVerdict,
+            overallScore: validated.data.overallScore,
+            debateSummary: validated.data.debateSummary,
+            cioExecutiveDirective: validated.data.cioExecutiveDirective,
+            tradeActionPlan: validated.data.tradeActionPlan,
+          };
+          cioStatus = 'success';
+        }
       }
     } catch (cioErr) {
       console.warn('[Orchestrator] CIO synthesis encountered error; using baseline consensus:', cioErr);

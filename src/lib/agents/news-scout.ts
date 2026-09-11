@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { StockQuote } from '@/types/stock';
 import { NewsScoutReport } from '@/types/agent';
 import { generateGeminiJson } from '../gemini-helper';
+import { validateAndRepairNewsScout } from './schema-validator';
 
 export async function runNewsScoutAgent(
   quote: StockQuote,
@@ -51,15 +52,9 @@ Analyze NEWS SENTIMENT. Return valid JSON:
   const parsed = await generateGeminiJson(client, prompt, 3500);
   if (!parsed) return fallback;
 
-  return {
-    agentName: 'Agent News Scout (Sentiment & Catalysts)',
-    role: 'NEWS_SCOUT',
-    stance: parsed.stance || fallback.stance,
-    confidenceScore: parsed.confidenceScore || fallback.confidenceScore,
-    headlineTakeaway: parsed.headlineTakeaway || fallback.headlineTakeaway,
-    sentimentPolarity: parsed.sentimentPolarity ?? fallback.sentimentPolarity,
-    catalystsIdentified: parsed.catalystsIdentified || fallback.catalystsIdentified,
-    headwindWarnings: parsed.headwindWarnings || fallback.headwindWarnings,
-    arguments: parsed.arguments || fallback.arguments,
-  };
+  const validated = validateAndRepairNewsScout(parsed);
+  if (validated.success && validated.data) {
+    return validated.data;
+  }
+  return fallback;
 }

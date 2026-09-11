@@ -15,6 +15,7 @@ import { PortfolioView } from '@/components/PortfolioView';
 import { PortfolioAuditModal } from '@/components/PortfolioAuditModal';
 import { BullionView } from '@/components/BullionView';
 import { OrderModal } from '@/components/OrderModal';
+import { TelemetryModal } from '@/components/TelemetryModal';
 import { LoginGate } from '@/components/LoginGate';
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
 import { InactivityTracker } from '@/components/InactivityTracker';
@@ -104,6 +105,8 @@ export default function Dashboard() {
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isCouncilOpen, setIsCouncilOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
+  const [isTelemetryOpen, setIsTelemetryOpen] = useState(false);
+  const [selectedTelemetryRunId, setSelectedTelemetryRunId] = useState<string | undefined>(undefined);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'gemini' | 'upstox' | 'access'>('upstox');
 
@@ -683,6 +686,7 @@ export default function Dashboard() {
         onOpenBriefing={handleOpenBriefing}
         onOpenSettings={() => handleOpenSettings(session?.isAdmin ? 'gemini' : 'upstox')}
         onOpenAccess={() => handleOpenSettings('access')}
+        onOpenTelemetry={() => setIsTelemetryOpen(true)}
         watchlistCount={watchlist.length}
         hasApiKey={Boolean(apiKey || hasServerKey)}
         isUpstoxConnected={isUpstoxConnected}
@@ -904,6 +908,10 @@ export default function Dashboard() {
           setIsCouncilOpen(false);
           handleOpenOrderModal(sym, type, target, sl);
         }}
+        onOpenTelemetry={(runId) => {
+          setSelectedTelemetryRunId(runId);
+          setIsTelemetryOpen(true);
+        }}
       />
 
       {/* Pre-Market Daily Intelligence Modal */}
@@ -964,6 +972,16 @@ export default function Dashboard() {
         onOrderSuccess={(_res) => {
           loadPortfolio(true);
         }}
+      />
+
+      {/* AI Observability & Deliberation Telemetry Modal */}
+      <TelemetryModal
+        isOpen={isTelemetryOpen}
+        onClose={() => {
+          setIsTelemetryOpen(false);
+          setSelectedTelemetryRunId(undefined);
+        }}
+        selectedRunId={selectedTelemetryRunId}
       />
 
       {/* PWA Mobile Install Prompt */}

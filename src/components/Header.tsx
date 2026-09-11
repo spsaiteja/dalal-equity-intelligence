@@ -13,6 +13,7 @@ import {
   Shield,
   UserCheck,
   Coins,
+  Activity,
 } from 'lucide-react';
 
 interface AuthUserHeader {
@@ -28,6 +29,7 @@ interface HeaderProps {
   onOpenBriefing: () => void;
   onOpenSettings: () => void;
   onOpenAccess?: () => void;
+  onOpenTelemetry?: () => void;
   watchlistCount: number;
   hasApiKey: boolean;
   isUpstoxConnected?: boolean;
@@ -45,6 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenBriefing,
   onOpenSettings,
   onOpenAccess,
+  onOpenTelemetry,
   watchlistCount,
   hasApiKey,
   isUpstoxConnected = false,
@@ -175,6 +178,18 @@ export const Header: React.FC<HeaderProps> = ({
             <Newspaper className="h-4 w-4 text-amber-400 animate-pulse flex-shrink-0" />
             <span className="hidden md:inline whitespace-nowrap">Daily AI Briefing</span>
           </button>
+
+          {/* AI Observability & Telemetry Button */}
+          {onOpenTelemetry && (
+            <button
+              onClick={onOpenTelemetry}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 to-blue-500/15 border border-cyan-500/30 text-cyan-300 hover:text-cyan-200 hover:border-cyan-400/50 transition-all text-xs font-semibold shadow-sm whitespace-nowrap"
+              title="Inspect real-time agent execution latencies, retry metrics & model traces"
+            >
+              <Activity className="h-4 w-4 text-cyan-400 animate-pulse flex-shrink-0" />
+              <span className="hidden lg:inline whitespace-nowrap">Observability</span>
+            </button>
+          )}
 
           {/* Dedicated Admin Access Management Button */}
           {isAdmin && (

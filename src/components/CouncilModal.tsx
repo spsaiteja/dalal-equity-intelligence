@@ -29,6 +29,7 @@ interface CouncilModalProps {
   loading: boolean;
   symbol: string;
   onOpenOrderModal?: (stockSymbol: string, transactionType: 'BUY' | 'SELL', targetPrice?: string, stopLossPrice?: string) => void;
+  onOpenTelemetry?: (runId?: string) => void;
 }
 
 export const CouncilModal: React.FC<CouncilModalProps> = ({
@@ -38,6 +39,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
   loading,
   symbol,
   onOpenOrderModal,
+  onOpenTelemetry,
 }) => {
   const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'sentinel' | 'fundamental' | 'news' | 'risk'>('all');
 
@@ -402,10 +404,21 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
               {consensus.metadata && (
                 <div className="bg-surface/40 border border-surface-border/60 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-surface-muted font-mono text-[11px]">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Run ID: <strong className="text-white font-mono">{consensus.metadata.runId.slice(0, 8)}...</strong>
-                    </span>
+                    {onOpenTelemetry ? (
+                      <button
+                        onClick={() => onOpenTelemetry(consensus.metadata?.runId)}
+                        className="flex items-center gap-1.5 text-surface-muted hover:text-cyan-300 font-mono text-[11px] hover:underline transition-colors cursor-pointer group"
+                        title="Click to view run execution telemetry in the Observability dashboard"
+                      >
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Run ID: <strong className="text-white font-mono group-hover:text-cyan-300">{consensus.metadata.runId.slice(0, 8)}...</strong>
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-surface-muted font-mono text-[11px]">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Run ID: <strong className="text-white font-mono">{consensus.metadata.runId.slice(0, 8)}...</strong>
+                      </span>
+                    )}
                     <span className="text-surface-border">|</span>
                     <span className="text-surface-muted text-[11px]">
                       Latency: <strong className="text-white">{consensus.metadata.executionTimeMs}ms</strong>

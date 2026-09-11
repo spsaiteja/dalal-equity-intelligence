@@ -360,9 +360,24 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
   - Sets `isFallback: true` and a human-readable `fallbackReason`.
   - UI automatically displays an amber `Fallback` warning chip on the affected department card in [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
 
+### Structured Observability & Telemetry Audit Engine (`telemetry.ts`):
+- **Agent Run Telemetry Schema**:
+  - `AgentExecutionLog`: Captures execution time in milliseconds, retry counts, active model, operational status (`success` | `fallback` | `failed`), and explicit fallback rationale.
+  - `DeliberationRunTelemetry`: Correlates all 5 agents under an immutable `runId`, overall status, CIO conviction verdict & score, tool execution counts, and timestamps.
+- **Dual-Tier Zero-DB Cloud Persistence**:
+  - Primary: Async fire-and-forget sync to Upstash Redis REST (`telemetry:agent_runs.json`).
+  - Fallback: Local disk cache (`data/telemetry_runs.json`) ensuring 100% offline tracing capability.
+- **Real-Time Aggregate Metrics Engine**:
+  - `getTelemetryStats()` computes total deliberation runs, overall success rate %, fallback rate %, mean execution latency, model distributions, and per-agent latency/reliability matrices.
+- **Public Observability Route**:
+  - `GET /api/ai/telemetry` exposes telemetry stats and recent deliberation run traces.
+- **UI Observability Dashboard & Trace Modal**:
+  - [`TelemetryModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/TelemetryModal.tsx): Real-time tracing view with KPI cards, per-agent latency gauges, and expandable run execution inspector.
+  - Accessible via the **Observability** button in [`Header.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/Header.tsx) and by clicking any active `Run ID` badge in [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar (Run ID, Latency, Model, Tools Executed, Agent badges), amber fallback chips on rate-limited agents, and interactive tabs to read the unvarnished arguments of each agent.
+- Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Agent badges), amber fallback chips on rate-limited agents, and interactive tabs to read the unvarnished arguments of each agent.
 
 ---
 
@@ -918,7 +933,8 @@ In your Vercel Project Settings &rarr; **Environment Variables**, set:
 | Metric / Pipeline | Expected Standard | Verified Result | Status |
 | :--- | :--- | :--- | :--- |
 | **TypeScript Compilation** | Zero type errors (`npx tsc --noEmit`) | **0 Errors (Exit code 0)** | Passed |
-| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **25 Routes Compiled Successfully** | Passed |
+| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **26 Routes Compiled Successfully** | Passed |
+| **Structured AI Observability** | Async Redis logging & Telemetry Modal | **Audited (/api/ai/telemetry)** | Passed |
 | **500-Stock Screener Fetch** | Latency under 300 ms | **~120 ms** | Passed |
 | **Market Benchmark Indices** | NIFTY, SENSEX, BANK NIFTY, VIX | **100% Live Quotes** | Passed |
 | **5-Agent Council Deliberation** | Structured consensus JSON | **Valid (Health Score 8.5/10)** | Passed |

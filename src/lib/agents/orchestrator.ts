@@ -23,6 +23,7 @@ import {
   validateAndRepairRiskGuardian,
   validateAndRepairCIOConsensus,
 } from './schema-validator';
+import { recordDeliberationTelemetry, DeliberationRunTelemetry } from './telemetry';
 
 /**
  * Execution Context for the AI Deliberation Run
@@ -412,6 +413,91 @@ Return STRICT valid JSON:
       error: tc.error,
     })),
   };
+
+  // Asynchronous non-blocking telemetry audit trail
+  const overallStatus = Object.values(context.status).every((s) => s === 'success')
+    ? 'SUCCESS'
+    : Object.values(context.status).some((s) => s === 'failed')
+    ? 'FAILED'
+    : 'PARTIAL_FALLBACK';
+
+  const telemetryPayload: DeliberationRunTelemetry = {
+    runId,
+    timestamp,
+    symbol: quote.symbol,
+    companyName: quote.name,
+    totalExecutionTimeMs: totalDurationMs,
+    overallStatus,
+    cioVerdict: finalConsensus.cioVerdict,
+    cioScore: finalConsensus.overallScore,
+    agents: {
+      sentinel: {
+        runId,
+        agentName: 'Agent Sentinel',
+        role: 'SENTINEL',
+        executionTimeMs: context.metrics.sentinelMs || 0,
+        retryCount: 0,
+        modelUsed: metadata.model,
+        status: context.status.sentinel,
+        isFallback: Boolean(context.agentOutputs.sentinel?.isFallback),
+        fallbackReason: context.agentOutputs.sentinel?.fallbackReason,
+        timestamp,
+      },
+      fundamental: {
+        runId,
+        agentName: 'Agent Fundamentalist',
+        role: 'FUNDAMENTAL',
+        executionTimeMs: context.metrics.fundamentalMs || 0,
+        retryCount: 0,
+        modelUsed: metadata.model,
+        status: context.status.fundamental,
+        isFallback: Boolean(context.agentOutputs.fundamental?.isFallback),
+        fallbackReason: context.agentOutputs.fundamental?.fallbackReason,
+        timestamp,
+      },
+      newsScout: {
+        runId,
+        agentName: 'Agent News Scout',
+        role: 'NEWS_SCOUT',
+        executionTimeMs: context.metrics.newsScoutMs || 0,
+        retryCount: 0,
+        modelUsed: metadata.model,
+        status: context.status.newsScout,
+        isFallback: Boolean(context.agentOutputs.newsScout?.isFallback),
+        fallbackReason: context.agentOutputs.newsScout?.fallbackReason,
+        timestamp,
+      },
+      riskGuardian: {
+        runId,
+        agentName: 'Agent Risk Guardian',
+        role: 'RISK_GUARDIAN',
+        executionTimeMs: context.metrics.riskGuardianMs || 0,
+        retryCount: 0,
+        modelUsed: metadata.model,
+        status: context.status.riskGuardian,
+        isFallback: Boolean(context.agentOutputs.riskGuardian?.isFallback),
+        fallbackReason: context.agentOutputs.riskGuardian?.fallbackReason,
+        timestamp,
+      },
+      cio: {
+        runId,
+        agentName: 'Chief Investment Officer',
+        role: 'CIO',
+        executionTimeMs: context.metrics.cioMs || 0,
+        retryCount: 0,
+        modelUsed: metadata.model,
+        status: context.status.cio,
+        isFallback: context.status.cio === 'fallback',
+        timestamp,
+      },
+    },
+    toolsExecutedCount: context.toolCalls.length,
+    model: metadata.model,
+  };
+
+  recordDeliberationTelemetry(telemetryPayload).catch((e) =>
+    console.warn('[Orchestrator] Telemetry logging encountered error:', e)
+  );
 
   return {
     ...finalConsensus,

@@ -24,3 +24,4 @@ export interface ApprovalRecord extends HumanOverridePayload {
   timestamp: string;
   isModified: boolean;
 }
+

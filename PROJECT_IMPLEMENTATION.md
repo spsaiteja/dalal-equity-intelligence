@@ -422,9 +422,25 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
   - [`OrderModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/OrderModal.tsx) reflects whether a trade is `AI Recommended` or `Operator Refined`.
   - Mandatory **Human Operator Risk Acknowledgment Checkbox Gate** ensures deliberate operator confirmation before order dispatch.
 
+### Multi-Turn Feedback & Iterative Refinement (`interrogation.ts`):
+- **Specialist Interrogation Chamber**:
+  - Provides a conversational feedback interface directly within the deliberation modal, allowing research analysts to interrogate individual department heads (Sentinel, Fundamentalist, News Scout, Risk Guardian, or CIO).
+  - Persona Grounding: Each agent maintains a distinct institutional voice — Sentinel cites technical pivots/moving averages, Fundamentalist defends margin of safety/earnings multiples, News Scout analyzes sector policy/macro headlines, Risk Guardian stress-tests drawdown buffers/position sizing, and the CIO delivers strategic synthesis.
+- **Counterfactual "What-If" Scenario Analysis**:
+  - Interactive scenario chips enable instant evaluation of macro/micro shocks (*"What if crude oil prices spike 15%?"*, *"How strong is the 200-day EMA support floor?"*, *"Explain the valuation margin of safety calculation."*, *"Would you widen the stop-loss buffer for high beta volatility?"*).
+- **Conversational Memory & Token Bounds**:
+  - Maintains conversation history bounded to the most recent 6 messages to prevent token explosion.
+  - Injects asset symbol, live price, original consensus summary, and CIO directives into prompt context.
+  - High-resilience fallback engine provides deterministic specialist insights if LLM services are rate-limited or unavailable.
+- **Guardrails & Compliance Integration**:
+  - All incoming user queries are verified against prompt injection exploits (`sanitizeInput`) and scrubbed of PII (`stripPII`).
+  - Output texts are checked for compliance violations (`scanOutputSafety`) and stamped with statutory SEBI disclaimers.
+- **Council Chat REST API**:
+  - `POST /api/ai/council/chat`: Secure endpoint executing targeted persona clarifications and what-if evaluations.
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, historical deliberation trajectory ribbon, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, interactive tabs to read the unvarnished arguments of each agent, and the Human-in-the-Loop customization/veto controls with operator refinement indicators.
+- Features a header score gauge, historical deliberation trajectory ribbon, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, interactive tabs to read the unvarnished arguments of each agent, Human-in-the-Loop customization/veto controls, and the embedded **Interrogation & What-If Chamber** with live multi-turn conversational responses.
 
 ---
 
@@ -980,7 +996,8 @@ In your Vercel Project Settings &rarr; **Environment Variables**, set:
 | Metric / Pipeline | Expected Standard | Verified Result | Status |
 | :--- | :--- | :--- | :--- |
 | **TypeScript Compilation** | Zero type errors (`npx tsc --noEmit`) | **0 Errors (Exit code 0)** | Passed |
-| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **28 Routes Compiled Successfully** | Passed |
+| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **29 Routes Compiled Successfully** | Passed |
+| **Multi-Turn Interrogation & What-If** | Persona grounding, what-if scenarios & chat API | **49/49 Tests Passed (/api/ai/council/chat)** | Passed |
 | **Human-in-the-Loop Governance** | Parameter overrides, veto chamber & audit trail | **26/26 Tests Passed (/api/ai/approval)** | Passed |
 | **Structured AI Observability** | Async Redis logging & Telemetry Modal | **Audited (/api/ai/telemetry)** | Passed |
 | **Guardrails & Safety Layer** | 4-layer validation, PII redaction & SEBI RA notice | **24/24 Tests Passed (0 false flags)** | Passed |

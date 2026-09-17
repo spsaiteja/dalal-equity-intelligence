@@ -124,3 +124,60 @@ export async function generateGeminiJson(
 
   return null;
 }
+
+/**
+ * Executes a Gemini plain-text request with model failover, exponential backoff, and timeout protection.
+ */
+export async function generateGeminiText(
+  client: GoogleGenerativeAI | null,
+  prompt: string,
+  timeoutMsOrOptions?: number | RetryOptions
+): Promise<string | null> {
+  if (!client) return null;
+
+  const options: Required<RetryOptions> = {
+    ...DEFAULT_RETRY_OPTIONS,
+    ...(typeof timeoutMsOrOptions === 'number'
+      ? { timeoutMs: timeoutMsOrOptions }
+      : timeoutMsOrOptions || {}),
+  };
+
+  const modelsToTry = ['gemini-1.5-flash-latest', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro'];
+
+  for (const modelName of modelsToTry) {
+    let attempt = 0;
+
+    while (attempt <= options.maxRetries) {
+      try {
+        const model = client.getGenerativeModel({ model: modelName });
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout after ${options.timeoutMs}ms for ${modelName}`)), options.timeoutMs)
+        );
+
+        const contentPromise = model.generateContent(prompt).then((res) => res.response.text());
+        const text = await Promise.race([contentPromise, timeoutPromise]);
+        if (text && text.trim()) {
+          return text.trim();
+        }
+      } catch (err: any) {
+        if (err?.message?.includes('404') || err?.status === 404) {
+          break;
+        }
+
+        const retryable = isRetryableError(err);
+        if (retryable && attempt < options.maxRetries) {
+          const delay = calculateBackoff(attempt, options.initialDelayMs, options.maxDelayMs);
+          await sleep(delay);
+          attempt++;
+          continue;
+        }
+
+        console.warn(`[Gemini-Text] Call failed for ${modelName} after ${attempt} retries:`, err?.message || err);
+        break;
+      }
+    }
+  }
+
+  return null;
+}

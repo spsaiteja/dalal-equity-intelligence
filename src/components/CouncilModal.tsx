@@ -27,7 +27,13 @@ import {
   RotateCcw,
   Ban,
   Check,
+  MessageSquare,
+  Send,
+  Sparkles,
+  Bot,
+  HelpCircle,
 } from 'lucide-react';
+import { CouncilRole, ChatMessage } from '@/types/chat';
 
 interface CouncilModalProps {
   isOpen: boolean;
@@ -50,7 +56,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
 }) => {
   const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'sentinel' | 'fundamental' | 'news' | 'risk'>('all');
 
-  // Phase 8: Human-in-the-Loop Override & Approval State
+  // Phase 8: Human-in-the-Loop & Approval State
   const [isCustomizingPlan, setIsCustomizingPlan] = useState<boolean>(false);
   const [customTarget1, setCustomTarget1] = useState<string>('');
   const [customTarget2, setCustomTarget2] = useState<string>('');
@@ -59,6 +65,12 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
   const [isVetoed, setIsVetoed] = useState<boolean>(false);
   const [vetoReason, setVetoReason] = useState<string>('');
   const [showVetoInput, setShowVetoInput] = useState<boolean>(false);
+
+  // Phase 9: Multi-Turn Interrogation & What-If State
+  const [interrogationTarget, setInterrogationTarget] = useState<CouncilRole>('CIO');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState<string>('');
+  const [isChatSending, setIsChatSending] = useState<boolean>(false);
 
   React.useEffect(() => {
     if (consensus?.tradeActionPlan) {
@@ -70,6 +82,9 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
       setIsVetoed(false);
       setShowVetoInput(false);
       setVetoReason('');
+      setChatMessages([]);
+      setChatInput('');
+      setInterrogationTarget('CIO');
     }
   }, [consensus]);
 
@@ -164,6 +179,71 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
       }).catch((e) => console.warn('[Approval] Veto POST failed:', e));
     } catch {
       // non-blocking
+    }
+  };
+
+  const handleSendInterrogation = async (queryOverride?: string) => {
+    const textToSend = (queryOverride || chatInput).trim();
+    if (!textToSend || !consensus || isChatSending) return;
+
+    const userMessage: ChatMessage = {
+      id: `usr-${Date.now()}`,
+      role: 'user',
+      content: textToSend,
+      timestamp: new Date().toISOString(),
+    };
+
+    setChatMessages((prev) => [...prev, userMessage]);
+    if (!queryOverride) setChatInput('');
+    setIsChatSending(true);
+
+    try {
+      const res = await fetch('/api/ai/council/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId: consensus.metadata?.runId,
+          symbol: consensus.symbol,
+          stockPrice: consensus.currentPrice,
+          targetAgent: interrogationTarget,
+          userQuery: textToSend,
+          history: chatMessages,
+          consensusSummary: consensus.debateSummary,
+          cioVerdict: consensus.cioVerdict,
+          cioDirective: consensus.cioExecutiveDirective,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.message) {
+        setChatMessages((prev) => [...prev, data.message]);
+      } else {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: `err-${Date.now()}`,
+            role: 'assistant',
+            senderRole: interrogationTarget,
+            senderName: 'System',
+            content: data.error || 'Failed to generate agent clarification. Please try again.',
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      }
+    } catch {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          role: 'assistant',
+          senderRole: interrogationTarget,
+          senderName: 'System',
+          content: 'Network connection issue while communicating with the Council.',
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    } finally {
+      setIsChatSending(false);
     }
   };
 
@@ -710,6 +790,171 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                     </ul>
                   </div>
                 </div>
+              </div>
+
+              {/* Phase 9: Multi-Turn Interrogation & "What-If" Counterfactual Chamber */}
+              <div className="bg-gradient-to-b from-surface/90 to-surface-card border border-purple-500/30 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-surface-border/80 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-500/20">
+                      <MessageSquare className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-white">
+                          Interrogate Council & &ldquo;What-If&rdquo; Scenarios
+                        </h4>
+                        <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                          Multi-Turn Feedback
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-surface-muted">
+                        Interrogate any specialist agent or pose hypothetical market conditions
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Target Persona Selector */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] text-surface-muted font-bold mr-0.5">Address:</span>
+                    {(['CIO', 'SENTINEL', 'FUNDAMENTALIST', 'NEWS_SCOUT', 'RISK_GUARDIAN'] as CouncilRole[]).map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => setInterrogationTarget(role)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                          interrogationTarget === role
+                            ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/40'
+                            : 'bg-surface border border-surface-border text-surface-muted hover:text-white hover:border-purple-500/30'
+                        }`}
+                      >
+                        {role === 'CIO'
+                          ? 'CIO'
+                          : role === 'SENTINEL'
+                          ? 'Sentinel'
+                          : role === 'FUNDAMENTALIST'
+                          ? 'Fundamentalist'
+                          : role === 'NEWS_SCOUT'
+                          ? 'News Scout'
+                          : 'Risk Guardian'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Counterfactual What-If Quick Chips */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-surface-muted tracking-wider flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 text-purple-400" />
+                    <span>Quick Counterfactual Scenarios</span>
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {[
+                      'What if crude oil prices spike 15%?',
+                      'How strong is the 200-day EMA support floor?',
+                      'Explain the valuation margin of safety calculation.',
+                      'Would you widen the stop-loss buffer for high beta volatility?',
+                      'Compare risk against sectoral peers.',
+                    ].map((chipText, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        disabled={isChatSending}
+                        onClick={() => handleSendInterrogation(chipText)}
+                        className="text-[10.5px] px-2.5 py-1 rounded-lg bg-surface/70 border border-surface-border hover:border-purple-500/40 hover:text-white text-surface-muted transition-colors disabled:opacity-50"
+                      >
+                        {chipText}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Conversation History Display */}
+                <div className="bg-surface/60 border border-surface-border rounded-xl p-3 max-h-72 overflow-y-auto space-y-3">
+                  {chatMessages.length === 0 ? (
+                    <div className="py-6 text-center space-y-1.5">
+                      <Bot className="h-6 w-6 text-purple-400/60 mx-auto" />
+                      <p className="text-xs text-white font-medium">
+                        Council is standing by for interrogation.
+                      </p>
+                      <p className="text-[11px] text-surface-muted max-w-md mx-auto">
+                        Type a question below or pick a quick scenario to challenge the committee&apos;s stance on {consensus.symbol}.
+                      </p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1 px-1">
+                          <span className="text-[10px] font-bold text-surface-muted">
+                            {msg.role === 'user' ? 'Operator' : msg.senderName || 'Agent'}
+                          </span>
+                          {msg.senderRole && msg.role !== 'user' && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-300 font-semibold">
+                              {msg.senderRole}
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className={`rounded-xl p-3 text-xs max-w-[85%] leading-relaxed ${
+                            msg.role === 'user'
+                              ? 'bg-purple-600/90 text-white rounded-br-none shadow-md'
+                              : 'bg-surface-card border border-surface-border text-surface-foreground rounded-bl-none shadow-sm'
+                          }`}
+                        >
+                          <p className="whitespace-pre-line">{msg.content}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+
+                  {isChatSending && (
+                    <div className="flex items-center gap-2 text-xs text-purple-300 animate-pulse p-2">
+                      <div className="h-4 w-4 rounded-full border-2 border-purple-400 border-t-transparent animate-spin" />
+                      <span>
+                        Interrogating Agent {interrogationTarget === 'CIO' ? 'CIO' : interrogationTarget}...
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chat Input Box */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendInterrogation();
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder={`Interrogate ${interrogationTarget === 'CIO' ? 'the CIO' : interrogationTarget}... (e.g. What if earnings miss by 5%?)`}
+                    disabled={isChatSending}
+                    className="flex-1 bg-surface border border-surface-border focus:border-purple-500/50 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-surface-muted/60 focus:outline-none transition-all disabled:opacity-50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isChatSending || !chatInput.trim()}
+                    className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-600/30 transition-all shrink-0"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Ask Agent</span>
+                  </button>
+                  {chatMessages.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setChatMessages([])}
+                      className="p-2.5 rounded-xl bg-surface border border-surface-border text-surface-muted hover:text-white text-xs transition-colors shrink-0"
+                      title="Clear chat history"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </form>
               </div>
 
               {/* Orchestration Observability Bar */}

@@ -113,5 +113,6 @@ export interface OrchestrationMetadata {
     completionTokens: number;
     totalTokens: number;
   };
+  dissentAnalysis?: import('./dissent').ConsensusDissentAnalysis;
 }
 

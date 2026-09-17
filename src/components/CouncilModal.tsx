@@ -32,6 +32,7 @@ import {
   Sparkles,
   Bot,
   HelpCircle,
+  Scale,
 } from 'lucide-react';
 import { CouncilRole, ChatMessage } from '@/types/chat';
 
@@ -595,6 +596,109 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       </span>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Phase 10: Consensus Agreement Index & Dissent Analysis */}
+              {consensus.metadata?.dissentAnalysis && (
+                <div className="bg-gradient-to-r from-surface via-surface-card to-surface border border-surface-border rounded-xl p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Scale className="h-4 w-4 text-purple-400" />
+                      <span className="text-xs font-bold text-white">
+                        Committee Consensus &amp; Dissent Spectrum
+                      </span>
+                      <span
+                        className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                          consensus.metadata.dissentAnalysis.breakdown.consensusStrength === 'UNANIMOUS'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : consensus.metadata.dissentAnalysis.breakdown.consensusStrength === 'STRONG_CONCURRENCE'
+                            ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+                            : consensus.metadata.dissentAnalysis.breakdown.consensusStrength === 'MODERATE_SPLIT'
+                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse'
+                        }`}
+                      >
+                        {consensus.metadata.dissentAnalysis.breakdown.consensusStrength.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs font-mono">
+                      <span className="text-surface-muted text-[11px]">
+                        Agreement Index: <strong className="text-white">{consensus.metadata.dissentAnalysis.breakdown.agreementIndexPercent}%</strong>
+                      </span>
+                      <span className="text-surface-border">|</span>
+                      <span className="text-surface-muted text-[11px]">
+                        Polarization: <strong className="text-purple-300 font-mono">{consensus.metadata.dissentAnalysis.polarizationScore.toFixed(2)}</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stance Alignment Progress Bar */}
+                  <div className="space-y-1">
+                    <div className="h-2 w-full bg-surface rounded-full overflow-hidden flex border border-surface-border/50">
+                      {consensus.metadata.dissentAnalysis.breakdown.bullishPercent > 0 && (
+                        <div
+                          style={{ width: `${consensus.metadata.dissentAnalysis.breakdown.bullishPercent}%` }}
+                          className="bg-emerald-500 h-full transition-all"
+                          title={`Bullish: ${consensus.metadata.dissentAnalysis.breakdown.bullishPercent}%`}
+                        />
+                      )}
+                      {consensus.metadata.dissentAnalysis.breakdown.neutralPercent > 0 && (
+                        <div
+                          style={{ width: `${consensus.metadata.dissentAnalysis.breakdown.neutralPercent}%` }}
+                          className="bg-amber-500 h-full transition-all"
+                          title={`Neutral: ${consensus.metadata.dissentAnalysis.breakdown.neutralPercent}%`}
+                        />
+                      )}
+                      {consensus.metadata.dissentAnalysis.breakdown.bearishPercent > 0 && (
+                        <div
+                          style={{ width: `${consensus.metadata.dissentAnalysis.breakdown.bearishPercent}%` }}
+                          className="bg-rose-500 h-full transition-all"
+                          title={`Bearish: ${consensus.metadata.dissentAnalysis.breakdown.bearishPercent}%`}
+                        />
+                      )}
+                    </div>
+                    <div className="flex justify-between text-[10px] text-surface-muted">
+                      <span className="flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        Bullish ({consensus.metadata.dissentAnalysis.breakdown.bullishCount})
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        Neutral ({consensus.metadata.dissentAnalysis.breakdown.neutralCount})
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                        Bearish ({consensus.metadata.dissentAnalysis.breakdown.bearishCount})
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Primary Dissenting Counter-Thesis Callout */}
+                  {consensus.metadata.dissentAnalysis.primaryDissenter ? (
+                    <div className="bg-rose-950/20 border border-rose-500/30 rounded-lg p-2.5 flex items-start gap-2.5 text-xs">
+                      <AlertOctagon className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-rose-300 text-[11px]">
+                            Dissenting Voice: {consensus.metadata.dissentAnalysis.primaryDissenter.agentName} ({consensus.metadata.dissentAnalysis.primaryDissenter.rawStance})
+                          </span>
+                          <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 font-bold">
+                            Counter-Thesis
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-surface-muted leading-relaxed">
+                          &ldquo;{consensus.metadata.dissentAnalysis.primaryDissenter.counterThesis}&rdquo;
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-emerald-950/10 border border-emerald-500/20 rounded-lg p-2 flex items-center gap-2 text-xs text-emerald-400">
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      <span className="text-[11px]">No sharp dissension detected — all department heads concur with the CIO directive.</span>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -438,9 +438,25 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
 - **Council Chat REST API**:
   - `POST /api/ai/council/chat`: Secure endpoint executing targeted persona clarifications and what-if evaluations.
 
+### Multi-Agent Consensus Scoring & Dissent Analysis (`dissent-analyzer.ts`):
+- **Consensus & Agreement Index Matrix**:
+  - `calculateConsensusBreakdown()` computes the mathematical agreement percentage across all 4 department heads (Sentinel, Fundamentalist, News Scout, Risk Guardian).
+  - Classifies consensus strength into 4 institutional categories: `UNANIMOUS` (100%), `STRONG_CONCURRENCE` (&ge;75%), `MODERATE_SPLIT` (&ge;50%), and `SHARP_DISSENT` (&ge;2 bulls vs &ge;2 bears).
+  - `calculatePolarizationScore()` measures direct opposition between bullish and bearish camps (0.0 to 1.0).
+- **Automated Dissenter Detection & Counter-Thesis Pinpointing**:
+  - `identifyDissenters()` scans individual stances against the final CIO verdict, isolating opposing department heads.
+  - Severity classification: High severity for direct ideological opposition (e.g. Bullish Chartist vs Bearish Value Skeptic) and low severity for neutral hesitation.
+  - Extracts the dissenter's primary counter-argument so portfolio managers can immediately review the core downside thesis before execution.
+- **UI Consensus Meter & Dissenting Thesis Callout**:
+  - Visual tri-color consensus meter (emerald for bullish, amber for neutral, rose for bearish) displaying exact headcount and agreement percentage.
+  - Cautionary Dissenting Voice card in [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx) highlighting the single strongest counter-thesis, or a green concurrence notice if all agents agree.
+- **Dissent REST API**:
+  - `POST /api/ai/council/dissent`: Computes consensus breakdown, dissenter lists, and polarization scores for any set of agent outputs.
+  - `GET /api/ai/council/dissent`: Health check and metrics specification endpoint.
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, historical deliberation trajectory ribbon, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, interactive tabs to read the unvarnished arguments of each agent, Human-in-the-Loop customization/veto controls, and the embedded **Interrogation & What-If Chamber** with live multi-turn conversational responses.
+- Features a header score gauge, historical deliberation trajectory ribbon, committee consensus & dissent meter, primary dissenting voice callout, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, interactive tabs to read the unvarnished arguments of each agent, Human-in-the-Loop customization/veto controls, and the embedded **Interrogation & What-If Chamber** with live multi-turn conversational responses.
 
 ---
 
@@ -996,7 +1012,8 @@ In your Vercel Project Settings &rarr; **Environment Variables**, set:
 | Metric / Pipeline | Expected Standard | Verified Result | Status |
 | :--- | :--- | :--- | :--- |
 | **TypeScript Compilation** | Zero type errors (`npx tsc --noEmit`) | **0 Errors (Exit code 0)** | Passed |
-| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **29 Routes Compiled Successfully** | Passed |
+| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **30 Routes Compiled Successfully** | Passed |
+| **Consensus Scoring & Dissent Analysis** | Agreement index, dissenter detection & dissent meter | **38/38 Tests Passed (/api/ai/council/dissent)** | Passed |
 | **Multi-Turn Interrogation & What-If** | Persona grounding, what-if scenarios & chat API | **49/49 Tests Passed (/api/ai/council/chat)** | Passed |
 | **Human-in-the-Loop Governance** | Parameter overrides, veto chamber & audit trail | **26/26 Tests Passed (/api/ai/approval)** | Passed |
 | **Structured AI Observability** | Async Redis logging & Telemetry Modal | **Audited (/api/ai/telemetry)** | Passed |

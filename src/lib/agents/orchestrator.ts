@@ -36,6 +36,7 @@ import {
   formatMarketRegimeContext,
   estimateTokens,
 } from './context-manager';
+import { analyzeCouncilDissent } from './dissent-analyzer';
 
 /**
  * Execution Context for the AI Deliberation Run
@@ -455,6 +456,11 @@ Return STRICT valid JSON:
     totalTokens: promptTokens + completionTokens,
   };
 
+  const dissentAnalysis = analyzeCouncilDissent({
+    agents: finalConsensus.agents,
+    cioVerdict: finalConsensus.cioVerdict,
+  });
+
   const metadata: OrchestrationMetadata = {
     runId,
     executionTimeMs: totalDurationMs,
@@ -467,6 +473,7 @@ Return STRICT valid JSON:
     guardrailFlags: safetyScan.flags,
     previousRun: historicalData.metadata,
     tokenEstimate,
+    dissentAnalysis,
     toolCallsCount: context.toolCalls.length,
     toolCalls: context.toolCalls.map((tc) => ({
       toolName: tc.toolName,

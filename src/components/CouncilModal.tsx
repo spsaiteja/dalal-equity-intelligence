@@ -20,6 +20,8 @@ import {
   ChevronDown,
   ChevronUp,
   Zap,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface CouncilModalProps {
@@ -109,10 +111,10 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-2xl font-black text-white">
-                          {consensus.cioVerdict.replace('_', ' ')}
+                          {(consensus.cioVerdict || 'NEUTRAL').replace('_', ' ')}
                         </span>
                         <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          Score: {consensus.overallScore} / 10
+                          Score: {consensus.overallScore ?? 7} / 10
                         </span>
                       </div>
                     </div>
@@ -123,7 +125,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       Current Price
                     </span>
                     <span className="text-xl font-black text-white">
-                      ₹{consensus.currentPrice.toLocaleString('en-IN')}
+                      ₹{(consensus.currentPrice ?? 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
@@ -134,7 +136,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                     Executive Directive
                   </span>
                   <p className="text-xs font-semibold text-white leading-relaxed bg-surface/60 p-3 rounded-xl border border-purple-500/20">
-                    {consensus.cioExecutiveDirective}
+                    {consensus.cioExecutiveDirective || 'Hold existing allocations and observe market structure.'}
                   </p>
                 </div>
 
@@ -145,7 +147,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       Target 1
                     </span>
                     <span className="text-sm font-bold text-emerald-400">
-                      {consensus.tradeActionPlan.target1}
+                      {consensus.tradeActionPlan?.target1 || 'N/A'}
                     </span>
                   </div>
 
@@ -154,7 +156,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       Target 2
                     </span>
                     <span className="text-sm font-bold text-blue-400">
-                      {consensus.tradeActionPlan.target2}
+                      {consensus.tradeActionPlan?.target2 || 'N/A'}
                     </span>
                   </div>
 
@@ -163,7 +165,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       Mandated Stop-Loss
                     </span>
                     <span className="text-sm font-bold text-rose-400">
-                      {consensus.tradeActionPlan.stopLoss}
+                      {consensus.tradeActionPlan?.stopLoss || 'N/A'}
                     </span>
                   </div>
 
@@ -172,7 +174,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       Max Allocation
                     </span>
                     <span className="text-sm font-bold text-purple-300">
-                      {consensus.tradeActionPlan.positionAllocation}
+                      {consensus.tradeActionPlan?.positionAllocation || '5% Portfolio'}
                     </span>
                   </div>
                 </div>
@@ -188,19 +190,19 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       onClick={() =>
                         onOpenOrderModal(
                           consensus.symbol,
-                          consensus.cioVerdict.includes('BUY') ? 'BUY' : 'SELL',
-                          consensus.tradeActionPlan.target1,
-                          consensus.tradeActionPlan.stopLoss
+                          (consensus.cioVerdict || '').includes('BUY') ? 'BUY' : 'SELL',
+                          consensus.tradeActionPlan?.target1,
+                          consensus.tradeActionPlan?.stopLoss
                         )
                       }
                       className={`px-4 py-2 rounded-xl text-white text-xs font-black flex items-center gap-2 shadow-lg transition-all shrink-0 ${
-                        consensus.cioVerdict.includes('BUY')
+                        (consensus.cioVerdict || '').includes('BUY')
                           ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/30'
                           : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 shadow-rose-600/30'
                       }`}
                     >
                       <Zap className="h-4 w-4" />
-                      <span>Execute 1-Click {consensus.cioVerdict.includes('BUY') ? 'Buy' : 'Sell'} Order</span>
+                      <span>Execute 1-Click {(consensus.cioVerdict || '').includes('BUY') ? 'Buy' : 'Sell'} Order</span>
                     </button>
                   </div>
                 )}
@@ -404,28 +406,28 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
               {consensus.metadata && (
                 <div className="bg-surface/40 border border-surface-border/60 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-3 flex-wrap">
-                    {onOpenTelemetry ? (
+                    {onOpenTelemetry && consensus.metadata.runId ? (
                       <button
                         onClick={() => onOpenTelemetry(consensus.metadata?.runId)}
                         className="flex items-center gap-1.5 text-surface-muted hover:text-cyan-300 font-mono text-[11px] hover:underline transition-colors cursor-pointer group"
                         title="Click to view run execution telemetry in the Observability dashboard"
                       >
                         <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                        Run ID: <strong className="text-white font-mono group-hover:text-cyan-300">{consensus.metadata.runId.slice(0, 8)}...</strong>
+                        Run ID: <strong className="text-white font-mono group-hover:text-cyan-300">{(consensus.metadata.runId || '').slice(0, 8)}...</strong>
                       </button>
                     ) : (
                       <span className="flex items-center gap-1.5 text-surface-muted font-mono text-[11px]">
                         <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                        Run ID: <strong className="text-white font-mono">{consensus.metadata.runId.slice(0, 8)}...</strong>
+                        Run ID: <strong className="text-white font-mono">{(consensus.metadata.runId || 'SYSTEM').slice(0, 8)}...</strong>
                       </span>
                     )}
                     <span className="text-surface-border">|</span>
                     <span className="text-surface-muted text-[11px]">
-                      Latency: <strong className="text-white">{consensus.metadata.executionTimeMs}ms</strong>
+                      Latency: <strong className="text-white">{consensus.metadata.executionTimeMs ?? 0}ms</strong>
                     </span>
                     <span className="text-surface-border">|</span>
                     <span className="text-surface-muted text-[11px]">
-                      Model: <strong className="text-purple-400">{consensus.metadata.model}</strong>
+                      Model: <strong className="text-purple-400">{consensus.metadata.model || 'gemini'}</strong>
                     </span>
                     {consensus.metadata.toolCallsCount !== undefined && (
                       <>
@@ -435,11 +437,30 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                         </span>
                       </>
                     )}
+                    {consensus.metadata.guardrailFlags !== undefined && (
+                      <>
+                        <span className="text-surface-border">|</span>
+                        {consensus.metadata.guardrailFlags.length === 0 ? (
+                          <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                            Safety: Clean
+                          </span>
+                        ) : (
+                          <span
+                            className="flex items-center gap-1 text-[11px] text-amber-400 font-medium cursor-help"
+                            title={consensus.metadata.guardrailFlags.map((f) => `[${f.severity}] ${f.message}`).join('\n')}
+                          >
+                            <ShieldAlert className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
+                            Safety: {consensus.metadata.guardrailFlags.length} Notice(s)
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5 text-[10px] flex-wrap">
                     <span className="text-surface-muted font-bold mr-1">Agents:</span>
-                    {Object.entries(consensus.metadata.agentsStatus).map(([agent, status]) => (
+                    {Object.entries(consensus.metadata.agentsStatus || {}).map(([agent, status]) => (
                       <span
                         key={agent}
                         className={`px-1.5 py-0.5 rounded uppercase font-bold tracking-wider ${
@@ -454,6 +475,20 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* SEBI Compliance Disclaimer Banner */}
+              <div className="bg-surface/30 border border-surface-border/50 rounded-xl p-3 text-[11px] text-surface-muted leading-relaxed flex items-start gap-2.5">
+                <Shield className="h-4 w-4 text-purple-400/70 flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-semibold text-white/90 block">
+                    SEBI Regulatory Compliance Disclaimer
+                  </span>
+                  <p className="text-[10.5px] leading-relaxed text-surface-muted">
+                    {consensus.metadata?.compliance?.full || consensus.metadata?.disclaimer ||
+                      'DalalAI Autonomous Research Committee is for informational and educational purposes only. Not SEBI-registered investment advice.'}
+                  </p>
+                </div>
+              </div>
             </>
           ) : (
             <p className="text-center text-sm text-surface-muted py-8">

@@ -24,6 +24,7 @@ import {
   validateAndRepairCIOConsensus,
 } from './schema-validator';
 import { recordDeliberationTelemetry, DeliberationRunTelemetry } from './telemetry';
+import { stripPII, scanConsensusOutput, getComplianceDisclaimer } from './guardrails';
 
 /**
  * Execution Context for the AI Deliberation Run
@@ -201,12 +202,21 @@ export async function orchestrateCouncilDeliberation(
   const key = customApiKey || process.env.GEMINI_API_KEY;
   const client = key && key.trim() ? new GoogleGenerativeAI(key.trim()) : null;
 
+  // Guardrail: Strip PII from news content before LLM ingestion
+  let piiDetectedInNews = false;
+  const sanitizedNews = recentNews.map((n) => {
+    const titleResult = stripPII(n.title || '');
+    const publisherResult = stripPII(n.publisher || '');
+    if (titleResult.piiDetected || publisherResult.piiDetected) piiDetectedInNews = true;
+    return { ...n, title: titleResult.cleaned, publisher: publisherResult.cleaned };
+  });
+
   const context: ExecutionContext = {
     runId,
     timestamp,
     symbol: quote.symbol,
     quote,
-    news: recentNews,
+    news: sanitizedNews,
     toolCalls: [],
     agentOutputs: {},
     metrics: {},
@@ -259,7 +269,7 @@ export async function orchestrateCouncilDeliberation(
   const [sentinelResult, fundamentalResult, newsScoutResult, riskGuardianResult] = await Promise.allSettled([
     timedExecution(() => runSentinelAgent(quote, client), isValidSentinelReport, getSentinelFallback(quote)),
     timedExecution(() => runFundamentalAgent(quote, client), isValidFundamentalReport, getFundamentalFallback(quote)),
-    timedExecution(() => runNewsScoutAgent(quote, recentNews, client), isValidNewsScoutReport, getNewsScoutFallback(quote, recentNews)),
+    timedExecution(() => runNewsScoutAgent(quote, sanitizedNews, client), isValidNewsScoutReport, getNewsScoutFallback(quote, sanitizedNews)),
     timedExecution(() => runRiskGuardianAgent(quote, client), isValidRiskGuardianReport, getRiskGuardianFallback(quote)),
   ]);
 
@@ -283,7 +293,7 @@ export async function orchestrateCouncilDeliberation(
   context.status.fundamental = fundamentalData.status;
 
   const newsScoutData = newsScoutResult.status === 'fulfilled' ? newsScoutResult.value : {
-    data: getNewsScoutFallback(quote, recentNews),
+    data: getNewsScoutFallback(quote, sanitizedNews),
     durationMs: 0,
     status: 'fallback' as AgentExecutionStatus,
   };
@@ -397,6 +407,20 @@ Return STRICT valid JSON:
   const totalDurationMs = Math.round(performance.now() - totalStartTime);
   context.metrics.totalMs = totalDurationMs;
 
+  // Guardrail: Scan all deliberation output for safety & regulatory compliance
+  const safetyScan = scanConsensusOutput({
+    debateSummary: finalConsensus.debateSummary,
+    cioExecutiveDirective: finalConsensus.cioExecutiveDirective,
+    agents: {
+      sentinel: finalConsensus.agents.sentinel,
+      fundamental: finalConsensus.agents.fundamental,
+      newsScout: finalConsensus.agents.newsScout,
+      riskGuardian: finalConsensus.agents.riskGuardian,
+    },
+  });
+
+  const compliance = getComplianceDisclaimer();
+
   const metadata: OrchestrationMetadata = {
     runId,
     executionTimeMs: totalDurationMs,
@@ -404,7 +428,9 @@ Return STRICT valid JSON:
     agentsStatus: context.status,
     model: client ? 'gemini-1.5-flash / ensemble-v1' : 'rule-engine-fallback',
     promptVersion: '1.3.0-agentic-tools',
-    disclaimer: 'DalalAI Autonomous Research Committee is for informational and educational purposes only. Not SEBI registered investment advice.',
+    disclaimer: compliance.short,
+    compliance,
+    guardrailFlags: safetyScan.flags,
     toolCallsCount: context.toolCalls.length,
     toolCalls: context.toolCalls.map((tc) => ({
       toolName: tc.toolName,

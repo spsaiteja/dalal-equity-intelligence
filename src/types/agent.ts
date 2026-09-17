@@ -1,4 +1,5 @@
 import { ConvictionType } from './stock';
+import { GuardrailFlag, ComplianceDisclaimer } from './guardrails';
 
 export type AgentRole = 'SENTINEL' | 'FUNDAMENTAL' | 'NEWS_SCOUT' | 'RISK_GUARDIAN' | 'CIO';
 export type AgentStance = 'Strong Bullish' | 'Bullish' | 'Neutral' | 'Bearish' | 'Strong Bearish';
@@ -96,5 +97,7 @@ export interface OrchestrationMetadata {
     status: 'success' | 'error';
     error?: string;
   }>;
+  guardrailFlags?: GuardrailFlag[];
+  compliance?: ComplianceDisclaimer;
 }
 

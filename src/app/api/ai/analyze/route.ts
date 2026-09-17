@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchStockQuote, fetchStockNews } from '@/lib/yahoo-client';
 import { analyzeStockWithGemini } from '@/lib/gemini';
 import { getSessionUser } from '@/lib/auth';
+import { sanitizeInput, validateSymbol } from '@/lib/agents/guardrails';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,14 +27,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Guardrail: Validate and sanitize symbol input
+    const symbolCheck = validateSymbol(symbol);
+    if (symbolCheck.blocked) {
+      return NextResponse.json(
+        { success: false, error: symbolCheck.reason || 'Invalid symbol input blocked by guardrails.' },
+        { status: 400 }
+      );
+    }
+    const cleanSymbol = symbolCheck.cleanInput;
+
+    // Guardrail: Sanitize API key input
+    if (apiKey && typeof apiKey === 'string') {
+      const keyCheck = sanitizeInput(apiKey, 'apiKey');
+      if (keyCheck.blocked) {
+        return NextResponse.json(
+          { success: false, error: 'API key input blocked by security guardrails.' },
+          { status: 400 }
+        );
+      }
+    }
+
     const [quote, news] = await Promise.all([
-      fetchStockQuote(symbol),
-      fetchStockNews(symbol),
+      fetchStockQuote(cleanSymbol),
+      fetchStockNews(cleanSymbol),
     ]);
 
     if (!quote) {
       return NextResponse.json(
-        { success: false, error: `Quote not found for ${symbol}` },
+        { success: false, error: `Quote not found for ${cleanSymbol}` },
         { status: 404 }
       );
     }
@@ -52,4 +74,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 

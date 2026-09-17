@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchStockQuote, fetchStockNews } from '@/lib/yahoo-client';
 import { orchestrateCouncilDeliberation } from '@/lib/agents/orchestrator';
 import { getSessionUser } from '@/lib/auth';
+import { sanitizeInput, validateSymbol } from '@/lib/agents/guardrails';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,13 +20,34 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { symbol, apiKey, quote: clientQuote } = body;
 
-    const sym = symbol || clientQuote?.symbol;
+    const rawSym = symbol || clientQuote?.symbol;
 
-    if (!sym) {
+    if (!rawSym) {
       return NextResponse.json(
         { success: false, error: 'Stock symbol is required' },
         { status: 400 }
       );
+    }
+
+    // Guardrail: Validate and sanitize symbol input
+    const symbolCheck = validateSymbol(rawSym);
+    if (symbolCheck.blocked) {
+      return NextResponse.json(
+        { success: false, error: symbolCheck.reason || 'Invalid symbol input blocked by guardrails.' },
+        { status: 400 }
+      );
+    }
+    const sym = symbolCheck.cleanInput;
+
+    // Guardrail: Sanitize API key input (block prompt injection in key field)
+    if (apiKey && typeof apiKey === 'string') {
+      const keyCheck = sanitizeInput(apiKey, 'apiKey');
+      if (keyCheck.blocked) {
+        return NextResponse.json(
+          { success: false, error: 'API key input blocked by security guardrails.' },
+          { status: 400 }
+        );
+      }
     }
 
     const [quote, news] = await Promise.all([
@@ -55,3 +77,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

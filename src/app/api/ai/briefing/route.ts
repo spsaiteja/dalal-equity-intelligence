@@ -4,6 +4,7 @@ import { generateMarketBriefing } from '@/lib/gemini';
 import { POPULAR_INDIAN_STOCKS } from '@/lib/stock-data';
 import { StockQuote } from '@/types/stock';
 import { getSessionUser } from '@/lib/auth';
+import { sanitizeInput } from '@/lib/agents/guardrails';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,17 @@ export async function POST(request: NextRequest) {
     try {
       const body = await request.json();
       apiKey = body.apiKey;
+
+      // Guardrail: Sanitize API key input
+      if (apiKey && typeof apiKey === 'string') {
+        const keyCheck = sanitizeInput(apiKey, 'apiKey');
+        if (keyCheck.blocked) {
+          return NextResponse.json(
+            { success: false, error: 'API key input blocked by security guardrails.' },
+            { status: 400 }
+          );
+        }
+      }
     } catch {
       // Empty body is acceptable
     }
@@ -47,4 +59,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 

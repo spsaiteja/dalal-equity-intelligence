@@ -163,18 +163,18 @@ export const TelemetryModal: React.FC<TelemetryModalProps> = ({ isOpen, onClose,
                   </h4>
 
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                    {Object.entries(stats.agentAverages).map(([agent, data]) => (
+                    {Object.entries(stats.agentAverages || {}).map(([agent, data]) => (
                       <div key={agent} className="bg-surface-card p-3 rounded-lg border border-surface-border">
                         <span className="text-[10px] font-bold uppercase text-white block capitalize">
                           {agent}
                         </span>
                         <span className="text-lg font-black text-cyan-400 block my-1">
-                          {data.avgLatencyMs}
+                          {data?.avgLatencyMs ?? 0}
                           <span className="text-[10px] font-normal text-surface-muted">ms</span>
                         </span>
                         <div className="flex items-center justify-between text-[9px] text-surface-muted">
-                          <span className="text-emerald-400 font-bold">{data.successCount} succ</span>
-                          <span className="text-amber-400 font-bold">{data.fallbackCount} fall</span>
+                          <span className="text-emerald-400 font-bold">{data?.successCount ?? 0} succ</span>
+                          <span className="text-amber-400 font-bold">{data?.fallbackCount ?? 0} fall</span>
                         </div>
                       </div>
                     ))}
@@ -200,9 +200,18 @@ export const TelemetryModal: React.FC<TelemetryModalProps> = ({ isOpen, onClose,
                   <div className="space-y-2">
                     {runs.map((r) => {
                       const isExpanded = expandedRunId === r.runId;
+                      const formattedTime = r.timestamp
+                        ? (() => {
+                            try {
+                              return new Date(r.timestamp).toISOString().slice(11, 19) + ' UTC';
+                            } catch {
+                              return '';
+                            }
+                          })()
+                        : '';
                       return (
                         <div
-                          key={r.runId}
+                          key={r.runId || Math.random().toString()}
                           className="bg-surface border border-surface-border hover:border-cyan-500/40 rounded-xl overflow-hidden transition-all"
                         >
                           <div
@@ -232,7 +241,7 @@ export const TelemetryModal: React.FC<TelemetryModalProps> = ({ isOpen, onClose,
                                   </span>
                                 </div>
                                 <span className="text-[10px] font-mono text-surface-muted">
-                                  Run: {r.runId.slice(0, 13)}... | {new Date(r.timestamp).toLocaleTimeString()}
+                                  Run: {(r.runId || '').slice(0, 13)}... {formattedTime ? `| ${formattedTime}` : ''}
                                 </span>
                               </div>
                             </div>
@@ -244,7 +253,7 @@ export const TelemetryModal: React.FC<TelemetryModalProps> = ({ isOpen, onClose,
                               </div>
                               <div className="text-right">
                                 <span className="text-[10px] text-surface-muted block">Duration</span>
-                                <span className="font-mono font-bold text-cyan-400">{r.totalExecutionTimeMs}ms</span>
+                                <span className="font-mono font-bold text-cyan-400">{r.totalExecutionTimeMs ?? 0}ms</span>
                               </div>
                             </div>
                           </div>
@@ -253,39 +262,42 @@ export const TelemetryModal: React.FC<TelemetryModalProps> = ({ isOpen, onClose,
                           {isExpanded && (
                             <div className="border-t border-surface-border bg-surface-card p-4 space-y-3 animate-in fade-in duration-150">
                               <div className="flex items-center justify-between text-[11px] text-surface-muted mb-2">
-                                <span>Model: <strong className="text-white">{r.model}</strong></span>
-                                <span>Tools Invoked: <strong className="text-cyan-400">{r.toolsExecutedCount}</strong></span>
+                                <span>Model: <strong className="text-white">{r.model || 'Unknown'}</strong></span>
+                                <span>Tools Invoked: <strong className="text-cyan-400">{r.toolsExecutedCount ?? 0}</strong></span>
                               </div>
 
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                                {Object.entries(r.agents || {}).map(([roleKey, agentLog]) => (
-                                  <div
-                                    key={roleKey}
-                                    className="bg-surface p-2.5 rounded-lg border border-surface-border space-y-1"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <strong className="text-white capitalize">{agentLog.agentName || roleKey}</strong>
-                                      <span
-                                        className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-bold ${
-                                          agentLog.status === 'success' && !agentLog.isFallback
-                                            ? 'bg-emerald-500/10 text-emerald-400'
-                                            : 'bg-amber-500/10 text-amber-400'
-                                        }`}
-                                      >
-                                        {agentLog.isFallback ? 'Fallback' : agentLog.status}
-                                      </span>
+                                {Object.entries(r.agents || {}).map(([roleKey, agentLog]) => {
+                                  if (!agentLog) return null;
+                                  return (
+                                    <div
+                                      key={roleKey}
+                                      className="bg-surface p-2.5 rounded-lg border border-surface-border space-y-1"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <strong className="text-white capitalize">{agentLog.agentName || roleKey}</strong>
+                                        <span
+                                          className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-bold ${
+                                            agentLog.status === 'success' && !agentLog.isFallback
+                                              ? 'bg-emerald-500/10 text-emerald-400'
+                                              : 'bg-amber-500/10 text-amber-400'
+                                          }`}
+                                        >
+                                          {agentLog.isFallback ? 'Fallback' : agentLog.status}
+                                        </span>
+                                      </div>
+                                      <div className="text-[10px] text-surface-muted flex justify-between">
+                                        <span>Latency: <strong className="text-cyan-300">{agentLog.executionTimeMs ?? 0}ms</strong></span>
+                                        <span>Retries: {agentLog.retryCount || 0}</span>
+                                      </div>
+                                      {agentLog.fallbackReason && (
+                                        <p className="text-[9px] text-amber-300/80 italic line-clamp-1" title={agentLog.fallbackReason}>
+                                          {agentLog.fallbackReason}
+                                        </p>
+                                      )}
                                     </div>
-                                    <div className="text-[10px] text-surface-muted flex justify-between">
-                                      <span>Latency: <strong className="text-cyan-300">{agentLog.executionTimeMs}ms</strong></span>
-                                      <span>Retries: {agentLog.retryCount || 0}</span>
-                                    </div>
-                                    {agentLog.fallbackReason && (
-                                      <p className="text-[9px] text-amber-300/80 italic line-clamp-1" title={agentLog.fallbackReason}>
-                                        {agentLog.fallbackReason}
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}

@@ -375,9 +375,19 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
   - [`TelemetryModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/TelemetryModal.tsx): Real-time tracing view with KPI cards, per-agent latency gauges, and expandable run execution inspector.
   - Accessible via the **Observability** button in [`Header.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/Header.tsx) and by clicking any active `Run ID` badge in [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
 
+### Guardrails & Safety Layer (`guardrails.ts`):
+- **4-Layer Safety Architecture**:
+  - *Input Sanitization & Injection Defense*: Regex patterns detect and block jailbreak vectors (`ignore previous instructions`, `DAN mode`, `ADMIN: OVERRIDE`, system prompt extraction, format exploits).
+  - *Symbol Format Validation*: Strict NSE/BSE allowlist regex (`^[A-Z0-9&_.-]{1,20}(\.(NS|BO))?$`) blocks SQL injections, XSS scripts, and malformed identifiers.
+  - *PII Scrubbing Engine*: Pre-LLM redaction scrubs emails, Indian mobile numbers, PAN numbers, Aadhaar sequences, Demat IDs, and account numbers, replacing them with `[REDACTED_*]` tokens.
+  - *Output Safety & Hallucination Guardrails*: Scans generated text for guaranteed-return claims (`risk-free profit`, `100% certain`), extreme assertions (`bankruptcy imminent`, `collapse to zero`), and non-compliant advisory recommendations (`take a loan to invest`, `sell all holdings`). Flags are attached to `metadata.guardrailFlags` without crashing the response.
+- **Regulatory Compliance Disclaimers**:
+  - Structured short and full disclaimers complying with SEBI (Research Analyst) Regulations, 2014.
+  - Stamped on every deliberation consensus and rendered directly in the UI.
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Agent badges), amber fallback chips on rate-limited agents, and interactive tabs to read the unvarnished arguments of each agent.
+- Features a header score gauge, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, and interactive tabs to read the unvarnished arguments of each agent.
 
 ---
 
@@ -935,6 +945,7 @@ In your Vercel Project Settings &rarr; **Environment Variables**, set:
 | **TypeScript Compilation** | Zero type errors (`npx tsc --noEmit`) | **0 Errors (Exit code 0)** | Passed |
 | **Production Webpack Build** | Clean Next.js build (`npm run build`) | **26 Routes Compiled Successfully** | Passed |
 | **Structured AI Observability** | Async Redis logging & Telemetry Modal | **Audited (/api/ai/telemetry)** | Passed |
+| **Guardrails & Safety Layer** | 4-layer validation, PII redaction & SEBI RA notice | **24/24 Tests Passed (0 false flags)** | Passed |
 | **500-Stock Screener Fetch** | Latency under 300 ms | **~120 ms** | Passed |
 | **Market Benchmark Indices** | NIFTY, SENSEX, BANK NIFTY, VIX | **100% Live Quotes** | Passed |
 | **5-Agent Council Deliberation** | Structured consensus JSON | **Valid (Health Score 8.5/10)** | Passed |

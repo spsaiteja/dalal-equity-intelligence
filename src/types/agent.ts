@@ -99,5 +99,19 @@ export interface OrchestrationMetadata {
   }>;
   guardrailFlags?: GuardrailFlag[];
   compliance?: ComplianceDisclaimer;
+  previousRun?: {
+    runId: string;
+    timestamp: string;
+    price: number;
+    cioVerdict: ConvictionType | string;
+    cioScore: number;
+    priceDeltaPercent: number;
+    elapsedTimeText: string;
+  };
+  tokenEstimate?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 

@@ -25,6 +25,17 @@ import {
 } from './schema-validator';
 import { recordDeliberationTelemetry, DeliberationRunTelemetry } from './telemetry';
 import { stripPII, scanConsensusOutput, getComplianceDisclaimer } from './guardrails';
+import {
+  saveDeliberationMemory,
+  getPreviousDeliberation,
+  getRecentMarketDeliberations,
+} from './memory';
+import {
+  pruneNewsContext,
+  formatHistoricalContext,
+  formatMarketRegimeContext,
+  estimateTokens,
+} from './context-manager';
 
 /**
  * Execution Context for the AI Deliberation Run
@@ -211,12 +222,22 @@ export async function orchestrateCouncilDeliberation(
     return { ...n, title: titleResult.cleaned, publisher: publisherResult.cleaned };
   });
 
+  // Memory & Context Management: Retrieve prior committee deliberation & recent market context
+  const [previousDeliberation, recentMarketRuns] = await Promise.all([
+    getPreviousDeliberation(quote.symbol),
+    getRecentMarketDeliberations(3),
+  ]);
+
+  const historicalData = formatHistoricalContext(previousDeliberation, quote.price);
+  const marketRegime = formatMarketRegimeContext(recentMarketRuns);
+  const { prunedNews } = pruneNewsContext(sanitizedNews, 400);
+
   const context: ExecutionContext = {
     runId,
     timestamp,
     symbol: quote.symbol,
     quote,
-    news: sanitizedNews,
+    news: prunedNews,
     toolCalls: [],
     agentOutputs: {},
     metrics: {},
@@ -269,7 +290,7 @@ export async function orchestrateCouncilDeliberation(
   const [sentinelResult, fundamentalResult, newsScoutResult, riskGuardianResult] = await Promise.allSettled([
     timedExecution(() => runSentinelAgent(quote, client), isValidSentinelReport, getSentinelFallback(quote)),
     timedExecution(() => runFundamentalAgent(quote, client), isValidFundamentalReport, getFundamentalFallback(quote)),
-    timedExecution(() => runNewsScoutAgent(quote, sanitizedNews, client), isValidNewsScoutReport, getNewsScoutFallback(quote, sanitizedNews)),
+    timedExecution(() => runNewsScoutAgent(quote, prunedNews, client), isValidNewsScoutReport, getNewsScoutFallback(quote, prunedNews)),
     timedExecution(() => runRiskGuardianAgent(quote, client), isValidRiskGuardianReport, getRiskGuardianFallback(quote)),
   ]);
 
@@ -293,7 +314,7 @@ export async function orchestrateCouncilDeliberation(
   context.status.fundamental = fundamentalData.status;
 
   const newsScoutData = newsScoutResult.status === 'fulfilled' ? newsScoutResult.value : {
-    data: getNewsScoutFallback(quote, sanitizedNews),
+    data: getNewsScoutFallback(quote, prunedNews),
     durationMs: 0,
     status: 'fallback' as AgentExecutionStatus,
   };
@@ -350,6 +371,8 @@ export async function orchestrateCouncilDeliberation(
   let finalConsensus: CouncilConsensus = baselineConsensus;
   let cioStatus: AgentExecutionStatus = 'fallback';
 
+  let cioPromptText = '';
+
   if (client) {
     try {
       const prompt = `
@@ -361,7 +384,8 @@ Company: ${quote.name} (${quote.symbol}) | Current Market Price: ₹${quote.pric
 2. Fundamentalist (Valuation): ${context.agentOutputs.fundamental.stance} - "${context.agentOutputs.fundamental.headlineTakeaway}"
 3. News Scout (Sentiment): ${context.agentOutputs.newsScout.stance} - "${context.agentOutputs.newsScout.headlineTakeaway}"
 4. Risk Guardian (Risk & Allocation): ${context.agentOutputs.riskGuardian.stance} - "${context.agentOutputs.riskGuardian.headlineTakeaway}"
-
+${historicalData.promptContext ? `\n${historicalData.promptContext}\n` : ''}
+${marketRegime ? `\n${marketRegime}\n` : ''}
 TASK: Synthesize these 4 department briefings into an institutional directive.
 Return STRICT valid JSON:
 {
@@ -379,6 +403,7 @@ Return STRICT valid JSON:
   }
 }
 `;
+      cioPromptText = prompt;
       const parsed = await generateGeminiJson(client, prompt, 3800);
       if (parsed) {
         const validated = validateAndRepairCIOConsensus(parsed);
@@ -421,16 +446,27 @@ Return STRICT valid JSON:
 
   const compliance = getComplianceDisclaimer();
 
+  // Context & Token Budget Estimator
+  const promptTokens = estimateTokens(cioPromptText || 'rule-engine-baseline') + 850;
+  const completionTokens = estimateTokens(JSON.stringify(finalConsensus));
+  const tokenEstimate = {
+    promptTokens,
+    completionTokens,
+    totalTokens: promptTokens + completionTokens,
+  };
+
   const metadata: OrchestrationMetadata = {
     runId,
     executionTimeMs: totalDurationMs,
     timestamp,
     agentsStatus: context.status,
     model: client ? 'gemini-1.5-flash / ensemble-v1' : 'rule-engine-fallback',
-    promptVersion: '1.3.0-agentic-tools',
+    promptVersion: '1.4.0-agentic-memory',
     disclaimer: compliance.short,
     compliance,
     guardrailFlags: safetyScan.flags,
+    previousRun: historicalData.metadata,
+    tokenEstimate,
     toolCallsCount: context.toolCalls.length,
     toolCalls: context.toolCalls.map((tc) => ({
       toolName: tc.toolName,
@@ -525,8 +561,15 @@ Return STRICT valid JSON:
     console.warn('[Orchestrator] Telemetry logging encountered error:', e)
   );
 
-  return {
+  const finalResult: CouncilConsensus = {
     ...finalConsensus,
     metadata,
   };
+
+  // Asynchronous non-blocking deliberation memory persistence
+  saveDeliberationMemory(finalResult).catch((e) =>
+    console.warn('[Orchestrator] Deliberation memory save error:', e)
+  );
+
+  return finalResult;
 }

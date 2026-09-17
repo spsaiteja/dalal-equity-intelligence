@@ -22,6 +22,7 @@ import {
   Zap,
   ShieldCheck,
   ShieldAlert,
+  History,
 } from 'lucide-react';
 
 interface CouncilModalProps {
@@ -207,6 +208,51 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Committee Memory: Historical Deliberation Trajectory */}
+              {consensus.metadata?.previousRun && (
+                <div className="bg-gradient-to-r from-purple-950/30 via-surface to-surface border border-purple-500/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+                      <History className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white">Prior Committee Review</span>
+                        <span className="text-[10px] text-surface-muted">
+                          ({consensus.metadata.previousRun.elapsedTimeText})
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-surface-muted flex items-center gap-2 mt-0.5">
+                        <span>Prior Price: <strong className="text-white">₹{consensus.metadata.previousRun.price.toLocaleString('en-IN')}</strong></span>
+                        <span className="text-surface-border">•</span>
+                        <span>Verdict: <strong className="text-purple-300">{consensus.metadata.previousRun.cioVerdict}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 sm:text-right">
+                    <div className="text-left sm:text-right">
+                      <span className="text-[10px] uppercase font-bold text-surface-muted block">Trajectory Return</span>
+                      <span
+                        className={`text-xs font-black flex items-center gap-1 sm:justify-end ${
+                          consensus.metadata.previousRun.priceDeltaPercent >= 0
+                            ? 'text-emerald-400'
+                            : 'text-rose-400'
+                        }`}
+                      >
+                        {consensus.metadata.previousRun.priceDeltaPercent >= 0 ? (
+                          <TrendingUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <TrendingDown className="h-3.5 w-3.5" />
+                        )}
+                        {consensus.metadata.previousRun.priceDeltaPercent >= 0 ? '+' : ''}
+                        {consensus.metadata.previousRun.priceDeltaPercent}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Council Debate Summary */}
               <div className="bg-surface border border-surface-border rounded-xl p-4">
@@ -434,6 +480,14 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                         <span className="text-surface-border">|</span>
                         <span className="text-surface-muted text-[11px]">
                           Tools: <strong className="text-cyan-400 font-mono">{consensus.metadata.toolCallsCount} executed</strong>
+                        </span>
+                      </>
+                    )}
+                    {consensus.metadata.tokenEstimate && (
+                      <>
+                        <span className="text-surface-border">|</span>
+                        <span className="text-surface-muted text-[11px]" title={`Prompt: ${consensus.metadata.tokenEstimate.promptTokens} | Completion: ${consensus.metadata.tokenEstimate.completionTokens}`}>
+                          Tokens: <strong className="text-purple-300 font-mono">~{Math.round(consensus.metadata.tokenEstimate.totalTokens / 100) / 10}k</strong>
                         </span>
                       </>
                     )}

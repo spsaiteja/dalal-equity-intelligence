@@ -23,6 +23,10 @@ import {
   ShieldCheck,
   ShieldAlert,
   History,
+  Edit3,
+  RotateCcw,
+  Ban,
+  Check,
 } from 'lucide-react';
 
 interface CouncilModalProps {
@@ -45,6 +49,123 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
   onOpenTelemetry,
 }) => {
   const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'sentinel' | 'fundamental' | 'news' | 'risk'>('all');
+
+  // Phase 8: Human-in-the-Loop Override & Approval State
+  const [isCustomizingPlan, setIsCustomizingPlan] = useState<boolean>(false);
+  const [customTarget1, setCustomTarget1] = useState<string>('');
+  const [customTarget2, setCustomTarget2] = useState<string>('');
+  const [customStopLoss, setCustomStopLoss] = useState<string>('');
+  const [customAllocation, setCustomAllocation] = useState<string>('');
+  const [isVetoed, setIsVetoed] = useState<boolean>(false);
+  const [vetoReason, setVetoReason] = useState<string>('');
+  const [showVetoInput, setShowVetoInput] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (consensus?.tradeActionPlan) {
+      setCustomTarget1(consensus.tradeActionPlan.target1 || '');
+      setCustomTarget2(consensus.tradeActionPlan.target2 || '');
+      setCustomStopLoss(consensus.tradeActionPlan.stopLoss || '');
+      setCustomAllocation(consensus.tradeActionPlan.positionAllocation || '');
+      setIsCustomizingPlan(false);
+      setIsVetoed(false);
+      setShowVetoInput(false);
+      setVetoReason('');
+    }
+  }, [consensus]);
+
+  const isPlanModified = Boolean(
+    consensus?.tradeActionPlan && (
+      customTarget1 !== (consensus.tradeActionPlan.target1 || '') ||
+      customTarget2 !== (consensus.tradeActionPlan.target2 || '') ||
+      customStopLoss !== (consensus.tradeActionPlan.stopLoss || '') ||
+      customAllocation !== (consensus.tradeActionPlan.positionAllocation || '')
+    )
+  );
+
+  const handleResetPlan = () => {
+    if (consensus?.tradeActionPlan) {
+      setCustomTarget1(consensus.tradeActionPlan.target1 || '');
+      setCustomTarget2(consensus.tradeActionPlan.target2 || '');
+      setCustomStopLoss(consensus.tradeActionPlan.stopLoss || '');
+      setCustomAllocation(consensus.tradeActionPlan.positionAllocation || '');
+      setIsCustomizingPlan(false);
+    }
+  };
+
+  const handleExecuteOrder = async () => {
+    if (!onOpenOrderModal || !consensus) return;
+
+    try {
+      fetch('/api/ai/approval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId: consensus.metadata?.runId,
+          symbol: consensus.symbol,
+          originalPlan: {
+            target1: consensus.tradeActionPlan?.target1 || '',
+            target2: consensus.tradeActionPlan?.target2 || '',
+            stopLoss: consensus.tradeActionPlan?.stopLoss || '',
+            positionAllocation: consensus.tradeActionPlan?.positionAllocation || '',
+            verdict: consensus.cioVerdict,
+          },
+          humanPlan: {
+            target1: customTarget1,
+            target2: customTarget2,
+            stopLoss: customStopLoss,
+            positionAllocation: customAllocation,
+            verdict: consensus.cioVerdict,
+          },
+          decision: isPlanModified ? 'MODIFIED_BY_HUMAN' : 'APPROVED_AS_IS',
+          overrideReason: isPlanModified ? 'Operator customized parameters via HITL mode' : undefined,
+        }),
+      }).catch((e) => console.warn('[Approval] POST failed:', e));
+    } catch {
+      // non-blocking
+    }
+
+    onOpenOrderModal(
+      consensus.symbol,
+      (consensus.cioVerdict || '').includes('BUY') ? 'BUY' : 'SELL',
+      customTarget1,
+      customStopLoss
+    );
+  };
+
+  const handleConfirmVeto = async () => {
+    if (!consensus) return;
+    setIsVetoed(true);
+    setShowVetoInput(false);
+
+    try {
+      fetch('/api/ai/approval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId: consensus.metadata?.runId,
+          symbol: consensus.symbol,
+          originalPlan: {
+            target1: consensus.tradeActionPlan?.target1 || '',
+            target2: consensus.tradeActionPlan?.target2 || '',
+            stopLoss: consensus.tradeActionPlan?.stopLoss || '',
+            positionAllocation: consensus.tradeActionPlan?.positionAllocation || '',
+            verdict: consensus.cioVerdict,
+          },
+          humanPlan: {
+            target1: customTarget1,
+            target2: customTarget2,
+            stopLoss: customStopLoss,
+            positionAllocation: customAllocation,
+            verdict: 'VETOED',
+          },
+          decision: 'VETOED_BY_HUMAN',
+          overrideReason: vetoReason || 'Operator vetoed committee directive',
+        }),
+      }).catch((e) => console.warn('[Approval] Veto POST failed:', e));
+    } catch {
+      // non-blocking
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -141,42 +262,178 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                   </p>
                 </div>
 
+                {/* CIO Action Plan Matrix Header with HITL Controls */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-purple-300">
+                      Institutional Trade Action Plan
+                    </span>
+                    {isVetoed ? (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                        <Ban className="h-2.5 w-2.5" />
+                        Vetoed by Operator
+                      </span>
+                    ) : isPlanModified ? (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
+                        <Edit3 className="h-2.5 w-2.5" />
+                        Human Refined (HITL Active)
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                        AI Recommended Baseline
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {isPlanModified && !isVetoed && (
+                      <button
+                        type="button"
+                        onClick={handleResetPlan}
+                        className="text-[10px] text-surface-muted hover:text-white px-2 py-0.5 rounded bg-surface border border-surface-border flex items-center gap-1 transition-colors"
+                        title="Reset to original AI committee parameters"
+                      >
+                        <RotateCcw className="h-2.5 w-2.5" />
+                        Reset
+                      </button>
+                    )}
+                    {!isVetoed && (
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomizingPlan(!isCustomizingPlan)}
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1 ${
+                          isCustomizingPlan
+                            ? 'bg-cyan-500 text-black border-cyan-400'
+                            : 'bg-surface hover:bg-surface-border text-cyan-300 border-cyan-500/30'
+                        }`}
+                      >
+                        <Edit3 className="h-3 w-3" />
+                        {isCustomizingPlan ? 'Done Customizing' : 'Customize Plan'}
+                      </button>
+                    )}
+                    {!isVetoed && !showVetoInput && (
+                      <button
+                        type="button"
+                        onClick={() => setShowVetoInput(true)}
+                        className="text-[10px] text-surface-muted hover:text-rose-400 px-2 py-1 rounded hover:bg-rose-500/10 transition-colors"
+                        title="Veto this recommendation"
+                      >
+                        <Ban className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Inline Veto Rationale Gate */}
+                {showVetoInput && (
+                  <div className="mb-3 p-3 rounded-xl bg-rose-950/30 border border-rose-500/30 text-xs space-y-2 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between text-rose-300 font-bold text-[11px]">
+                      <span className="flex items-center gap-1.5">
+                        <Ban className="h-3.5 w-3.5 text-rose-400" />
+                        Operator Veto Confirmation
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowVetoInput(false)}
+                        className="text-surface-muted hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-surface-muted">
+                      Vetoing suppresses the execution directive and documents your rationale in the compliance audit log.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Reason for veto (e.g. Earnings event risk, Sector cap reached)..."
+                        value={vetoReason}
+                        onChange={(e) => setVetoReason(e.target.value)}
+                        className="flex-1 bg-surface-card border border-rose-500/30 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-surface-muted focus:outline-none focus:border-rose-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleConfirmVeto}
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shrink-0 transition-colors"
+                      >
+                        Confirm Veto
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* CIO Action Plan Matrix */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div className="bg-surface/80 border border-surface-border rounded-xl p-2.5">
-                    <span className="text-[10px] text-surface-muted uppercase font-bold block">
+                    <span className="text-[10px] text-surface-muted uppercase font-bold block mb-1">
                       Target 1
                     </span>
-                    <span className="text-sm font-bold text-emerald-400">
-                      {consensus.tradeActionPlan?.target1 || 'N/A'}
-                    </span>
+                    {isCustomizingPlan ? (
+                      <input
+                        type="text"
+                        value={customTarget1}
+                        onChange={(e) => setCustomTarget1(e.target.value)}
+                        className="w-full bg-surface-card border border-cyan-500/40 rounded px-2 py-0.5 text-xs text-emerald-400 font-bold focus:outline-none"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-emerald-400">
+                        {customTarget1 || consensus.tradeActionPlan?.target1 || 'N/A'}
+                      </span>
+                    )}
                   </div>
 
                   <div className="bg-surface/80 border border-surface-border rounded-xl p-2.5">
-                    <span className="text-[10px] text-surface-muted uppercase font-bold block">
+                    <span className="text-[10px] text-surface-muted uppercase font-bold block mb-1">
                       Target 2
                     </span>
-                    <span className="text-sm font-bold text-blue-400">
-                      {consensus.tradeActionPlan?.target2 || 'N/A'}
-                    </span>
+                    {isCustomizingPlan ? (
+                      <input
+                        type="text"
+                        value={customTarget2}
+                        onChange={(e) => setCustomTarget2(e.target.value)}
+                        className="w-full bg-surface-card border border-cyan-500/40 rounded px-2 py-0.5 text-xs text-blue-400 font-bold focus:outline-none"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-blue-400">
+                        {customTarget2 || consensus.tradeActionPlan?.target2 || 'N/A'}
+                      </span>
+                    )}
                   </div>
 
                   <div className="bg-surface/80 border border-surface-border rounded-xl p-2.5">
-                    <span className="text-[10px] text-surface-muted uppercase font-bold block">
+                    <span className="text-[10px] text-surface-muted uppercase font-bold block mb-1">
                       Mandated Stop-Loss
                     </span>
-                    <span className="text-sm font-bold text-rose-400">
-                      {consensus.tradeActionPlan?.stopLoss || 'N/A'}
-                    </span>
+                    {isCustomizingPlan ? (
+                      <input
+                        type="text"
+                        value={customStopLoss}
+                        onChange={(e) => setCustomStopLoss(e.target.value)}
+                        className="w-full bg-surface-card border border-cyan-500/40 rounded px-2 py-0.5 text-xs text-rose-400 font-bold focus:outline-none"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-rose-400">
+                        {customStopLoss || consensus.tradeActionPlan?.stopLoss || 'N/A'}
+                      </span>
+                    )}
                   </div>
 
                   <div className="bg-surface/80 border border-surface-border rounded-xl p-2.5">
-                    <span className="text-[10px] text-surface-muted uppercase font-bold block">
+                    <span className="text-[10px] text-surface-muted uppercase font-bold block mb-1">
                       Max Allocation
                     </span>
-                    <span className="text-sm font-bold text-purple-300">
-                      {consensus.tradeActionPlan?.positionAllocation || '5% Portfolio'}
-                    </span>
+                    {isCustomizingPlan ? (
+                      <input
+                        type="text"
+                        value={customAllocation}
+                        onChange={(e) => setCustomAllocation(e.target.value)}
+                        className="w-full bg-surface-card border border-cyan-500/40 rounded px-2 py-0.5 text-xs text-purple-300 font-bold focus:outline-none"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-purple-300">
+                        {customAllocation || consensus.tradeActionPlan?.positionAllocation || '5% Portfolio'}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -184,27 +441,34 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                 {onOpenOrderModal && (
                   <div className="mt-3 pt-3 border-t border-purple-500/20 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="text-xs text-purple-200/90 font-medium">
-                      Ready to trade with CIO price targets & stop-loss?
+                      {isVetoed
+                        ? 'Recommendation vetoed by operator. Execution suppressed.'
+                        : isPlanModified
+                        ? 'Operator refined trade plan ready for execution.'
+                        : 'Ready to trade with CIO price targets & stop-loss?'}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onOpenOrderModal(
-                          consensus.symbol,
-                          (consensus.cioVerdict || '').includes('BUY') ? 'BUY' : 'SELL',
-                          consensus.tradeActionPlan?.target1,
-                          consensus.tradeActionPlan?.stopLoss
-                        )
-                      }
-                      className={`px-4 py-2 rounded-xl text-white text-xs font-black flex items-center gap-2 shadow-lg transition-all shrink-0 ${
-                        (consensus.cioVerdict || '').includes('BUY')
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/30'
-                          : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 shadow-rose-600/30'
-                      }`}
-                    >
-                      <Zap className="h-4 w-4" />
-                      <span>Execute 1-Click {(consensus.cioVerdict || '').includes('BUY') ? 'Buy' : 'Sell'} Order</span>
-                    </button>
+                    {isVetoed ? (
+                      <div className="px-4 py-2 rounded-xl bg-surface border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center gap-2">
+                        <Ban className="h-4 w-4 text-rose-400" />
+                        <span>Execution Vetoed</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleExecuteOrder}
+                        className={`px-4 py-2 rounded-xl text-white text-xs font-black flex items-center gap-2 shadow-lg transition-all shrink-0 ${
+                          (consensus.cioVerdict || '').includes('BUY')
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/30'
+                            : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 shadow-rose-600/30'
+                        }`}
+                      >
+                        <Zap className="h-4 w-4" />
+                        <span>
+                          Execute {isPlanModified ? 'Customized' : '1-Click'}{' '}
+                          {(consensus.cioVerdict || '').includes('BUY') ? 'Buy' : 'Sell'} Order
+                        </span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

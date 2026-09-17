@@ -1,0 +1,198 @@
+{
+  "bySymbol": {
+    "TCS": [
+      {
+        "runId": "run-test-1789653185093",
+        "symbol": "TCS",
+        "decision": "MODIFIED_BY_HUMAN",
+        "operatorRole": "HUMAN_OPERATOR",
+        "originalPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "humanPlan": {
+          "target1": "₹2,750",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,420",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "approvalId": "appr-65d28e1f-5f3",
+        "timestamp": "2026-09-17T13:53:05.116Z",
+        "isModified": true
+      },
+      {
+        "runId": "run-test-1789653185093",
+        "symbol": "TCS",
+        "decision": "APPROVED_AS_IS",
+        "operatorRole": "HUMAN_OPERATOR",
+        "originalPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "humanPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "approvalId": "appr-26c1d38b-e29",
+        "timestamp": "2026-09-17T13:53:05.093Z",
+        "isModified": false
+      }
+    ],
+    "INFY": [
+      {
+        "runId": "run-test-1789653185093",
+        "symbol": "INFY",
+        "decision": "MODIFIED_BY_HUMAN",
+        "operatorRole": "HUMAN_OPERATOR",
+        "originalPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "humanPlan": {
+          "target1": "₹2,750",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,420",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "approvalId": "appr-040ae68e-6ae",
+        "timestamp": "2026-09-17T13:53:05.119Z",
+        "isModified": true
+      }
+    ],
+    "RELIANCE": [
+      {
+        "runId": "run-test-1789653185093",
+        "symbol": "RELIANCE",
+        "decision": "VETOED_BY_HUMAN",
+        "operatorRole": "HUMAN_OPERATOR",
+        "originalPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "humanPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "vetoReason": "Earnings release tonight; high volatility expected outside risk budget.",
+        "approvalId": "appr-a9aa50ee-b36",
+        "timestamp": "2026-09-17T13:53:05.121Z",
+        "isModified": false
+      }
+    ]
+  },
+  "recent": [
+    {
+      "runId": "run-test-1789653185093",
+      "symbol": "RELIANCE",
+      "decision": "VETOED_BY_HUMAN",
+      "operatorRole": "HUMAN_OPERATOR",
+      "originalPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "humanPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "vetoReason": "Earnings release tonight; high volatility expected outside risk budget.",
+      "approvalId": "appr-a9aa50ee-b36",
+      "timestamp": "2026-09-17T13:53:05.121Z",
+      "isModified": false
+    },
+    {
+      "runId": "run-test-1789653185093",
+      "symbol": "INFY",
+      "decision": "MODIFIED_BY_HUMAN",
+      "operatorRole": "HUMAN_OPERATOR",
+      "originalPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "humanPlan": {
+        "target1": "₹2,750",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,420",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "approvalId": "appr-040ae68e-6ae",
+      "timestamp": "2026-09-17T13:53:05.119Z",
+      "isModified": true
+    },
+    {
+      "runId": "run-test-1789653185093",
+      "symbol": "TCS",
+      "decision": "MODIFIED_BY_HUMAN",
+      "operatorRole": "HUMAN_OPERATOR",
+      "originalPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "humanPlan": {
+        "target1": "₹2,750",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,420",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "approvalId": "appr-65d28e1f-5f3",
+      "timestamp": "2026-09-17T13:53:05.116Z",
+      "isModified": true
+    },
+    {
+      "runId": "run-test-1789653185093",
+      "symbol": "TCS",
+      "decision": "APPROVED_AS_IS",
+      "operatorRole": "HUMAN_OPERATOR",
+      "originalPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "humanPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "approvalId": "appr-26c1d38b-e29",
+      "timestamp": "2026-09-17T13:53:05.093Z",
+      "isModified": false
+    }
+  ]
+}

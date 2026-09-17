@@ -401,9 +401,30 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
   - Displays a dedicated "Prior Committee Review" ribbon in [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx) with prior price, verdict, and live return trajectory badge.
   - Observability bar renders a live token estimate badge (`~X.Xk tokens`).
 
+### Human-in-the-Loop & Approval Workflows (`approval.ts`):
+- **Institutional Governance & Human Agency Mandate**:
+  - The AI Council operates as an advisory committee, strictly preventing automated or unreviewed trade dispatch.
+  - Human operators possess unilateral authority to approve the AI directive as-is, customize parameters, or veto the directive entirely with an audit rationale.
+- **Interactive Action Plan Customization**:
+  - Operators can click "Customize Plan" in [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx) to edit Target 1, Target 2, Stop-Loss, and Allocation %.
+  - Live parameter diffing via `hasPlanBeenModified()` detects divergences from the AI baseline in real time.
+  - "Reset to AI Baseline" allows instant rollback of manual modifications.
+- **Veto Chamber with Rationale Logging**:
+  - Operators can veto any high-risk or untimely recommendation, providing an audit explanation (e.g., upcoming earnings release, sector rotation).
+  - Vetoed trades block execution in the UI and record a `VETOED_BY_HUMAN` event in the audit trail.
+- **Multi-Tier Audit Trail Persistence**:
+  - Stored in dual-tier storage: Upstash Redis (`approvals:<symbol>` and `approvals:recent`) + local disk (`data/approvals_audit.json`).
+  - Records full diff metadata: `runId`, `approvalId`, `symbol`, `timestamp`, `decision` (`APPROVED_AS_IS` | `MODIFIED_BY_HUMAN` | `VETOED_BY_HUMAN`), `originalPlan`, `humanPlan`, and `vetoReason`.
+- **Approval REST API**:
+  - `POST /api/ai/approval`: Records approval, modification, or veto decisions.
+  - `GET /api/ai/approval?symbol=TCS`: Queries audit trail history for compliance and oversight.
+- **Order Execution Safety Gate**:
+  - [`OrderModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/OrderModal.tsx) reflects whether a trade is `AI Recommended` or `Operator Refined`.
+  - Mandatory **Human Operator Risk Acknowledgment Checkbox Gate** ensures deliberate operator confirmation before order dispatch.
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, historical deliberation trajectory ribbon, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, and interactive tabs to read the unvarnished arguments of each agent.
+- Features a header score gauge, historical deliberation trajectory ribbon, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, interactive tabs to read the unvarnished arguments of each agent, and the Human-in-the-Loop customization/veto controls with operator refinement indicators.
 
 ---
 
@@ -959,7 +980,8 @@ In your Vercel Project Settings &rarr; **Environment Variables**, set:
 | Metric / Pipeline | Expected Standard | Verified Result | Status |
 | :--- | :--- | :--- | :--- |
 | **TypeScript Compilation** | Zero type errors (`npx tsc --noEmit`) | **0 Errors (Exit code 0)** | Passed |
-| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **27 Routes Compiled Successfully** | Passed |
+| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **28 Routes Compiled Successfully** | Passed |
+| **Human-in-the-Loop Governance** | Parameter overrides, veto chamber & audit trail | **26/26 Tests Passed (/api/ai/approval)** | Passed |
 | **Structured AI Observability** | Async Redis logging & Telemetry Modal | **Audited (/api/ai/telemetry)** | Passed |
 | **Guardrails & Safety Layer** | 4-layer validation, PII redaction & SEBI RA notice | **24/24 Tests Passed (0 false flags)** | Passed |
 | **Deliberation Memory & Token Budget** | Multi-run persistence, price delta & token bounds | **16/16 Tests Passed (/api/ai/memory)** | Passed |

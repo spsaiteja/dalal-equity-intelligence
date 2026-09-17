@@ -53,6 +53,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [stopLossPrice, setStopLossPrice] = useState<string>('');
   const [isPaperTrade, setIsPaperTrade] = useState<boolean>(!isUpstoxConnected || isAnalyticsToken);
   const [capitalInput, setCapitalInput] = useState<string>('');
+  const [hasOperatorConfirmed, setHasOperatorConfirmed] = useState<boolean>(true);
 
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [orderResult, setOrderResult] = useState<OrderPlacementResponse | null>(null);
@@ -70,6 +71,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       setErrorMessage(null);
       setQuantity(10);
       setCapitalInput('');
+      setHasOperatorConfirmed(true);
     }
   }, [isOpen, stock, initialTransactionType, suggestedTarget, suggestedStopLoss, isUpstoxConnected, isAnalyticsToken]);
 
@@ -498,7 +500,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     <Shield className="h-3 w-3" />
                     <span>CIO Trade Targets</span>
                   </span>
-                  <span className="text-[10px] text-surface-muted">Pre-filled by AI Council</span>
+                  {suggestedTarget && String(targetPrice).trim() !== String(suggestedTarget).replace('₹', '').trim() ? (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      Operator Refined
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                      AI Recommended
+                    </span>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -609,12 +619,33 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               )}
 
+              {/* Human Operator Risk Acknowledgment Checkbox Gate */}
+              <div className="bg-surface/50 border border-surface-border rounded-xl p-3 text-xs space-y-1.5">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={hasOperatorConfirmed}
+                    onChange={(e) => setHasOperatorConfirmed(e.target.checked)}
+                    className="mt-0.5 rounded border-surface-border text-emerald-500 focus:ring-0 cursor-pointer h-4 w-4 shrink-0"
+                  />
+                  <div className="space-y-0.5">
+                    <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                      Human Operator Risk Acknowledgment
+                    </span>
+                    <p className="text-[10.5px] text-surface-muted leading-relaxed">
+                      I have verified the order sizing and confirm that the stop-loss buffer aligns with institutional risk governance.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
               {/* Submit Button */}
               <div className="pt-1">
                 <button
                   type="button"
                   onClick={handleSubmitOrder}
-                  disabled={submitting || quantity <= 0}
+                  disabled={submitting || quantity <= 0 || !hasOperatorConfirmed}
                   className={`w-full py-3 rounded-xl font-black text-xs text-white shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
                     transactionType === 'BUY'
                       ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/30'

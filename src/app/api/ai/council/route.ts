@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
     const body = await request.json();
-    const { symbol, apiKey, quote: clientQuote } = body;
+    const { symbol, apiKey, quote: clientQuote, executionMode } = body;
 
     const rawSym = symbol || clientQuote?.symbol;
 
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const consensus = await orchestrateCouncilDeliberation(quote, news, apiKey);
+    const consensus = await orchestrateCouncilDeliberation(quote, news, apiKey, executionMode);
 
     return NextResponse.json({
       success: true,

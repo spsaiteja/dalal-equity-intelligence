@@ -74,7 +74,7 @@ export interface CouncilConsensus {
   metadata?: OrchestrationMetadata;
 }
 
-export type AgentExecutionStatus = 'success' | 'fallback' | 'failed';
+export type AgentExecutionStatus = 'success' | 'fallback' | 'failed' | 'dormant';
 
 export interface OrchestrationMetadata {
   runId: string;
@@ -114,5 +114,6 @@ export interface OrchestrationMetadata {
     totalTokens: number;
   };
   dissentAnalysis?: import('./dissent').ConsensusDissentAnalysis;
+  routing?: import('./routing').RoutingDecision;
 }
 

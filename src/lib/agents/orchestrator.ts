@@ -37,6 +37,8 @@ import {
   estimateTokens,
 } from './context-manager';
 import { analyzeCouncilDissent } from './dissent-analyzer';
+import { CouncilExecutionMode } from '@/types/routing';
+import { determineExecutionRouting, getDormantAgentReport } from './router';
 
 /**
  * Execution Context for the AI Deliberation Run
@@ -205,7 +207,8 @@ function getRiskGuardianFallback(quote: StockQuote): RiskGuardianReport {
 export async function orchestrateCouncilDeliberation(
   quote: StockQuote,
   recentNews: any[] = [],
-  customApiKey?: string
+  customApiKey?: string,
+  executionMode: CouncilExecutionMode = 'FULL_COUNCIL'
 ): Promise<CouncilConsensus> {
   const totalStartTime = performance.now();
   const runId = crypto.randomUUID();
@@ -222,6 +225,9 @@ export async function orchestrateCouncilDeliberation(
     if (titleResult.piiDetected || publisherResult.piiDetected) piiDetectedInNews = true;
     return { ...n, title: titleResult.cleaned, publisher: publisherResult.cleaned };
   });
+
+  // Dynamic Routing & Profile Classification
+  const routing = determineExecutionRouting(executionMode, quote, sanitizedNews.length);
 
   // Memory & Context Management: Retrieve prior committee deliberation & recent market context
   const [previousDeliberation, recentMarketRuns] = await Promise.all([
@@ -286,13 +292,37 @@ export async function orchestrateCouncilDeliberation(
   }
 
   // -------------------------------------------------------
-  // Step 2: Parallel Execution of 4 Department Agents
+  // Step 2: Dynamic Selective Execution of Department Agents
   // -------------------------------------------------------
   const [sentinelResult, fundamentalResult, newsScoutResult, riskGuardianResult] = await Promise.allSettled([
-    timedExecution(() => runSentinelAgent(quote, client), isValidSentinelReport, getSentinelFallback(quote)),
-    timedExecution(() => runFundamentalAgent(quote, client), isValidFundamentalReport, getFundamentalFallback(quote)),
-    timedExecution(() => runNewsScoutAgent(quote, prunedNews, client), isValidNewsScoutReport, getNewsScoutFallback(quote, prunedNews)),
-    timedExecution(() => runRiskGuardianAgent(quote, client), isValidRiskGuardianReport, getRiskGuardianFallback(quote)),
+    routing.activeAgents.includes('sentinel')
+      ? timedExecution(() => runSentinelAgent(quote, client), isValidSentinelReport, getSentinelFallback(quote))
+      : Promise.resolve({
+          data: getDormantAgentReport('sentinel', quote, routing.resolvedMode),
+          durationMs: 0,
+          status: 'dormant' as AgentExecutionStatus,
+        }),
+    routing.activeAgents.includes('fundamental')
+      ? timedExecution(() => runFundamentalAgent(quote, client), isValidFundamentalReport, getFundamentalFallback(quote))
+      : Promise.resolve({
+          data: getDormantAgentReport('fundamental', quote, routing.resolvedMode),
+          durationMs: 0,
+          status: 'dormant' as AgentExecutionStatus,
+        }),
+    routing.activeAgents.includes('newsScout')
+      ? timedExecution(() => runNewsScoutAgent(quote, prunedNews, client), isValidNewsScoutReport, getNewsScoutFallback(quote, prunedNews))
+      : Promise.resolve({
+          data: getDormantAgentReport('newsScout', quote, routing.resolvedMode),
+          durationMs: 0,
+          status: 'dormant' as AgentExecutionStatus,
+        }),
+    routing.activeAgents.includes('riskGuardian')
+      ? timedExecution(() => runRiskGuardianAgent(quote, client), isValidRiskGuardianReport, getRiskGuardianFallback(quote))
+      : Promise.resolve({
+          data: getDormantAgentReport('riskGuardian', quote, routing.resolvedMode),
+          durationMs: 0,
+          status: 'dormant' as AgentExecutionStatus,
+        }),
   ]);
 
   // Extract results safely
@@ -340,6 +370,11 @@ export async function orchestrateCouncilDeliberation(
   const target2 = Math.round(quote.price * 1.20);
   const stopLoss = Math.round(quote.price * 0.94);
 
+  const sentinelReport = context.agentOutputs.sentinel!;
+  const fundamentalReport = context.agentOutputs.fundamental!;
+  const newsScoutReport = context.agentOutputs.newsScout!;
+  const riskGuardianReport = context.agentOutputs.riskGuardian!;
+
   const isDiscounted = quote.discountFromHigh > 15 || (quote.rsi14 ?? 50) < 40;
   const defaultVerdict: ConvictionType = (quote.signal as ConvictionType) || (isDiscounted ? 'STRONG_BUY' : 'BUY');
   const defaultScore = quote.signalScore || (isDiscounted ? 8.6 : 7.2);
@@ -351,20 +386,20 @@ export async function orchestrateCouncilDeliberation(
     cioVerdict: defaultVerdict,
     overallScore: defaultScore,
     debateSummary: `The committee supports accumulating ${quote.name}. Agent Fundamentalist notes the ${quote.discountFromHigh}% margin of safety, while Sentinel confirms RSI is stabilizing. Agent Risk Guardian has sanctioned an entry with stop-loss at ₹${stopLoss}.`,
-    cioExecutiveDirective: `Execute staggered buy orders across 2 tranches. Allocate up to ${context.agentOutputs.riskGuardian.recommendedMaxPositionPercent}% of portfolio. Exit if price breaks below ₹${stopLoss}.`,
+    cioExecutiveDirective: `Execute staggered buy orders across 2 tranches. Allocate up to ${riskGuardianReport.recommendedMaxPositionPercent}% of portfolio. Exit if price breaks below ₹${stopLoss}.`,
     tradeActionPlan: {
       entryStrategy: `Stagger accumulation between ₹${Math.round(quote.price * 0.98)} and ₹${quote.price}`,
       target1: `₹${target1.toLocaleString('en-IN')}`,
       target2: `₹${target2.toLocaleString('en-IN')}`,
       stopLoss: `₹${stopLoss.toLocaleString('en-IN')}`,
       timeHorizon: '2-4 Months (Swing to Positional)',
-      positionAllocation: `Max ${context.agentOutputs.riskGuardian.recommendedMaxPositionPercent}% of portfolio`,
+      positionAllocation: `Max ${riskGuardianReport.recommendedMaxPositionPercent}% of portfolio`,
     },
     agents: {
-      sentinel: context.agentOutputs.sentinel,
-      fundamental: context.agentOutputs.fundamental,
-      newsScout: context.agentOutputs.newsScout,
-      riskGuardian: context.agentOutputs.riskGuardian,
+      sentinel: sentinelReport,
+      fundamental: fundamentalReport,
+      newsScout: newsScoutReport,
+      riskGuardian: riskGuardianReport,
     },
     timestamp,
   };
@@ -381,10 +416,10 @@ You are the CHIEF INVESTMENT OFFICER (CIO) presiding over the DalalAI Investment
 Review the 4 department briefs and render the FINAL INVESTMENT DIRECTIVE.
 
 Company: ${quote.name} (${quote.symbol}) | Current Market Price: ₹${quote.price}
-1. Sentinel (Technicals): ${context.agentOutputs.sentinel.stance} - "${context.agentOutputs.sentinel.headlineTakeaway}"
-2. Fundamentalist (Valuation): ${context.agentOutputs.fundamental.stance} - "${context.agentOutputs.fundamental.headlineTakeaway}"
-3. News Scout (Sentiment): ${context.agentOutputs.newsScout.stance} - "${context.agentOutputs.newsScout.headlineTakeaway}"
-4. Risk Guardian (Risk & Allocation): ${context.agentOutputs.riskGuardian.stance} - "${context.agentOutputs.riskGuardian.headlineTakeaway}"
+1. Sentinel (Technicals): ${sentinelReport.stance} - "${sentinelReport.headlineTakeaway}"
+2. Fundamentalist (Valuation): ${fundamentalReport.stance} - "${fundamentalReport.headlineTakeaway}"
+3. News Scout (Sentiment): ${newsScoutReport.stance} - "${newsScoutReport.headlineTakeaway}"
+4. Risk Guardian (Risk & Allocation): ${riskGuardianReport.stance} - "${riskGuardianReport.headlineTakeaway}"
 ${historicalData.promptContext ? `\n${historicalData.promptContext}\n` : ''}
 ${marketRegime ? `\n${marketRegime}\n` : ''}
 TASK: Synthesize these 4 department briefings into an institutional directive.
@@ -474,6 +509,7 @@ Return STRICT valid JSON:
     previousRun: historicalData.metadata,
     tokenEstimate,
     dissentAnalysis,
+    routing,
     toolCallsCount: context.toolCalls.length,
     toolCalls: context.toolCalls.map((tc) => ({
       toolName: tc.toolName,

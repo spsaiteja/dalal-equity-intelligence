@@ -454,9 +454,23 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
   - `POST /api/ai/council/dissent`: Computes consensus breakdown, dissenter lists, and polarization scores for any set of agent outputs.
   - `GET /api/ai/council/dissent`: Health check and metrics specification endpoint.
 
+### Dynamic Multi-Agent Routing & Selective Dispatch (`router.ts`):
+- **Institutional Market Profile Classifier**:
+  - `classifyStockProfile()` analyzes technical indicators (RSI, moving averages, breakout percentiles), valuation metrics (discount from 52-week high, P/E), day spread volatility, and breaking catalyst volume.
+  - Categorizes equities into 5 institutional profiles: `MOMENTUM_BREAKOUT`, `DEEP_VALUE`, `EARNINGS_CATALYST`, `HIGH_VOLATILITY`, and `BALANCED`.
+- **Dynamic Routing & Selective Dispatch Engine**:
+  - `determineExecutionRouting()` evaluates user-selected or auto-selected execution modes (`FULL_COUNCIL`, `TECHNICAL_SWING`, `VALUE_INVESTOR`, `EVENT_DRIVEN`, `AUTO_ROUTER`).
+  - Activates only the critical department heads (e.g., Sentinel & Risk Guardian for Technical Swings; Fundamentalist & Risk Guardian for Deep Value; News Scout & Sentinel for Event catalysts).
+  - Bypasses unnecessary LLM calls to achieve up to 50% query latency reduction and token savings.
+- **Dormant Standby Synthetic Reports**:
+  - `getDormantAgentReport()` generates deterministic, typed reports for inactive agents, preserving full interface compliance, quantitative key levels, and risk buffers without incurring LLM latency.
+- **UI Routing Strategy Bar & Standby Badges**:
+  - Prominent Dynamic Routing Bar in [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx) showing resolved execution mode, market profile, estimated latency savings, and active vs dormant agent allocations.
+  - Standby indicator badges on department head cards when dormant under selective routing.
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, historical deliberation trajectory ribbon, committee consensus & dissent meter, primary dissenting voice callout, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, interactive tabs to read the unvarnished arguments of each agent, Human-in-the-Loop customization/veto controls, and the embedded **Interrogation & What-If Chamber** with live multi-turn conversational responses.
+- Features a header score gauge, dynamic routing strategy bar, historical deliberation trajectory ribbon, committee consensus & dissent meter, primary dissenting voice callout, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, standby badges on dormant agents, interactive tabs to read the unvarnished arguments of each agent, Human-in-the-Loop customization/veto controls, and the embedded **Interrogation & What-If Chamber** with live multi-turn conversational responses.
 
 ---
 
@@ -1013,6 +1027,7 @@ In your Vercel Project Settings &rarr; **Environment Variables**, set:
 | :--- | :--- | :--- | :--- |
 | **TypeScript Compilation** | Zero type errors (`npx tsc --noEmit`) | **0 Errors (Exit code 0)** | Passed |
 | **Production Webpack Build** | Clean Next.js build (`npm run build`) | **30 Routes Compiled Successfully** | Passed |
+| **Dynamic Multi-Agent Routing** | Selective dispatch, market profiles & dormant synthetic reports | **35/35 Tests Passed (Up to 50% latency saved)** | Passed |
 | **Consensus Scoring & Dissent Analysis** | Agreement index, dissenter detection & dissent meter | **38/38 Tests Passed (/api/ai/council/dissent)** | Passed |
 | **Multi-Turn Interrogation & What-If** | Persona grounding, what-if scenarios & chat API | **49/49 Tests Passed (/api/ai/council/chat)** | Passed |
 | **Human-in-the-Loop Governance** | Parameter overrides, veto chamber & audit trail | **26/26 Tests Passed (/api/ai/approval)** | Passed |

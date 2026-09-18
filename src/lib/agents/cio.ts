@@ -1,13 +1,15 @@
 import { StockQuote } from '@/types/stock';
 import { CouncilConsensus } from '@/types/agent';
+import { CouncilExecutionMode } from '@/types/routing';
 import { orchestrateCouncilDeliberation } from './orchestrator';
 
 export async function runCouncilDeliberation(
   quote: StockQuote,
   recentNews: any[] = [],
-  customApiKey?: string
+  customApiKey?: string,
+  executionMode?: CouncilExecutionMode
 ): Promise<CouncilConsensus> {
-  return orchestrateCouncilDeliberation(quote, recentNews, customApiKey);
+  return orchestrateCouncilDeliberation(quote, recentNews, customApiKey, executionMode);
 }
 
 /* Backwards-compatible legacy implementation reference below */

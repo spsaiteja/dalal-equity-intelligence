@@ -301,6 +301,54 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
             </div>
           ) : consensus ? (
             <>
+              {/* Phase 11: Dynamic Routing Strategy & Profile Bar */}
+              {consensus.metadata?.routing && (
+                <div className="bg-surface/60 border border-surface-border rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-7 w-7 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                      <Zap className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold text-[11px]">
+                          Routing: {consensus.metadata.routing.resolvedMode.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 font-bold border border-indigo-500/20 uppercase">
+                          {consensus.metadata.routing.profile.replace(/_/g, ' ')}
+                        </span>
+                        {consensus.metadata.routing.estimatedLatencySavingsPercent > 0 && (
+                          <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                            ~{consensus.metadata.routing.estimatedLatencySavingsPercent}% Latency Saved
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10.5px] text-surface-muted leading-relaxed">
+                        {consensus.metadata.routing.rationale}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10.5px]">
+                    <span className="text-surface-muted font-bold">Active:</span>
+                    {consensus.metadata.routing.activeAgents.map((ag) => (
+                      <span key={ag} className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase font-semibold text-[9.5px]">
+                        {ag}
+                      </span>
+                    ))}
+                    {consensus.metadata.routing.dormantAgents.length > 0 && (
+                      <>
+                        <span className="text-surface-border mx-1">|</span>
+                        <span className="text-surface-muted font-bold">Standby:</span>
+                        {consensus.metadata.routing.dormantAgents.map((ag) => (
+                          <span key={ag} className="px-1.5 py-0.5 rounded bg-surface border border-surface-border text-surface-muted uppercase font-semibold text-[9.5px]">
+                            {ag}
+                          </span>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* CIO Final Verdict Banner */}
               <div className="bg-gradient-to-br from-purple-950/40 via-indigo-950/30 to-surface border border-purple-500/30 rounded-2xl p-5 shadow-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-purple-500/20 pb-4 mb-4">
@@ -733,6 +781,11 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                             Fallback
                           </span>
                         )}
+                        {consensus.metadata?.agentsStatus?.sentinel === 'dormant' && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-surface border border-surface-border text-surface-muted">
+                            Standby
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
                         {consensus.agents.sentinel.stance}
@@ -775,6 +828,11 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                         {consensus.agents.fundamental.isFallback && (
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" title={consensus.agents.fundamental.fallbackReason}>
                             Fallback
+                          </span>
+                        )}
+                        {consensus.metadata?.agentsStatus?.fundamental === 'dormant' && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-surface border border-surface-border text-surface-muted">
+                            Standby
                           </span>
                         )}
                       </div>
@@ -821,6 +879,11 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                             Fallback
                           </span>
                         )}
+                        {consensus.metadata?.agentsStatus?.newsScout === 'dormant' && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-surface border border-surface-border text-surface-muted">
+                            Standby
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                         {consensus.agents.newsScout.stance}
@@ -861,6 +924,11 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                         {consensus.agents.riskGuardian.isFallback && (
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" title={consensus.agents.riskGuardian.fallbackReason}>
                             Fallback
+                          </span>
+                        )}
+                        {consensus.metadata?.agentsStatus?.riskGuardian === 'dormant' && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-surface border border-surface-border text-surface-muted">
+                            Standby
                           </span>
                         )}
                       </div>

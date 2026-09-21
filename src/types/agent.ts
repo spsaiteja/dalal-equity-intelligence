@@ -119,3 +119,5 @@ export interface OrchestrationMetadata {
   calibration?: import('./calibration').SymbolTrackRecord;
 }
 
+export type CouncilDeliberationResult = CouncilConsensus;
+

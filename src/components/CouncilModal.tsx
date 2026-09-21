@@ -34,6 +34,10 @@ import {
   HelpCircle,
   Scale,
   Eye,
+  FileText,
+  Printer,
+  Download,
+  Volume2,
 } from 'lucide-react';
 import { CouncilRole, ChatMessage } from '@/types/chat';
 
@@ -73,6 +77,43 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState<string>('');
   const [isChatSending, setIsChatSending] = useState<boolean>(false);
+
+  // Phase 15: Institutional Executive Dossier State
+  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  const handleExportDossier = async (format: 'HTML_PRINT' | 'MARKDOWN' | 'AUDIO') => {
+    try {
+      if (!consensus) return;
+      setShowExportMenu(false);
+
+      if (format === 'HTML_PRINT') {
+        window.open('/api/ai/council/dossier?format=HTML_PRINT', '_blank');
+        return;
+      }
+
+      const res = await fetch('/api/ai/council/dossier?format=' + (format === 'MARKDOWN' ? 'MARKDOWN' : 'JSON'));
+      const data = await res.json();
+
+      if (format === 'MARKDOWN' && data?.markdown) {
+        const blob = new Blob([data.markdown], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${symbol}_Institutional_Research_Memo.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setExportNotice('Downloaded Markdown memo!');
+        setTimeout(() => setExportNotice(null), 3000);
+      } else if (format === 'AUDIO' && data?.dossier?.audioBriefingScript) {
+        await navigator.clipboard.writeText(data.dossier.audioBriefingScript);
+        setExportNotice('Audio Morning Briefing copied to clipboard!');
+        setTimeout(() => setExportNotice(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to export dossier:', err);
+    }
+  };
 
   React.useEffect(() => {
     if (consensus?.tradeActionPlan) {
@@ -275,12 +316,72 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-surface-muted hover:text-white hover:bg-surface transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {exportNotice && (
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 rounded-md animate-in fade-in">
+                {exportNotice}
+              </span>
+            )}
+
+            {consensus && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="px-2.5 py-1.5 rounded-lg bg-surface hover:bg-surface-border text-xs font-bold text-white flex items-center gap-1.5 border border-surface-border transition-colors shadow-sm"
+                >
+                  <FileText className="h-3.5 w-3.5 text-purple-400" />
+                  <span>Export Dossier</span>
+                  <ChevronDown className="h-3 w-3 text-surface-muted" />
+                </button>
+
+                {showExportMenu && (
+                  <div className="absolute right-0 mt-1 w-56 bg-surface-card border border-surface-border rounded-xl shadow-2xl p-1.5 z-30 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                    <button
+                      type="button"
+                      onClick={() => handleExportDossier('HTML_PRINT')}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-white hover:bg-surface rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                      <Printer className="h-3.5 w-3.5 text-blue-400" />
+                      <div>
+                        <div>Print Executive PDF</div>
+                        <div className="text-[10px] text-surface-muted font-normal">Standalone printable report</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportDossier('MARKDOWN')}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-white hover:bg-surface rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                      <Download className="h-3.5 w-3.5 text-emerald-400" />
+                      <div>
+                        <div>Download Memo (.md)</div>
+                        <div className="text-[10px] text-surface-muted font-normal">Formatted Markdown research memo</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportDossier('AUDIO')}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-white hover:bg-surface rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                      <Volume2 className="h-3.5 w-3.5 text-purple-400" />
+                      <div>
+                        <div>Copy Audio Briefing</div>
+                        <div className="text-[10px] text-surface-muted font-normal">60s broadcast transcript</div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-surface-muted hover:text-white hover:bg-surface transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}

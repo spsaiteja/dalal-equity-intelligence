@@ -506,9 +506,22 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
 - **UI Integration in Portfolio Audit Modal**:
   - [`PortfolioAuditModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/PortfolioAuditModal.tsx) features an interactive "Algorithmic Rebalancer (Phase 14)" tab rendering health grade badges, HHI gauges, freed/redeployed capital metrics, violation alert strips, and algorithmic trade sizing tables with share deltas and rupee figures.
 
+### Institutional Executive Dossier & Report Export Engine (`dossier-generator.ts`):
+- **Unified Multi-Phase Intelligence Synthesis**:
+  - `generateExecutiveDossier()` aggregates outputs across all 15 roadmap phases: Consensus directive, 4-agent breakdown, dissent spectrum, chart vision, track record calibration, and risk parameters into an institutional executive memo.
+  - Generates a synthesized 60-second broadcast-ready audio morning briefing script for portfolio managers on the go.
+- **Multi-Format Publication & Export Capabilities**:
+  - `formatDossierAsMarkdown()` produces publication-ready Markdown research memos with structured directive tables, breakdown matrices, and SEBI compliance notes.
+  - `formatDossierAsHtmlPrint()` creates standalone printable HTML formatted with executive typography, KPI summary cards, color-coded verdict badges, and `@media print` CSS rules for instant high-fidelity PDF printing.
+- **REST API Endpoint**:
+  - `POST /api/ai/council/dossier`: Generates complete executive dossiers in `JSON`, `MARKDOWN`, or `HTML_PRINT` format.
+  - `GET /api/ai/council/dossier`: Diagnostic benchmark endpoint with instant printable HTML preview.
+- **UI Chamber Integration**:
+  - [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx) features an "Export Dossier" dropdown providing 1-click access to **Print Executive PDF**, **Download Research Memo (.md)**, and **Copy Audio Morning Briefing** to clipboard.
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
-- Features a header score gauge, dynamic routing strategy bar, historical deliberation trajectory ribbon, accuracy track record panel, committee consensus & dissent meter, primary dissenting voice callout, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, standby badges on dormant agents, interactive tabs to read the unvarnished arguments of each agent, Human-in-the-Loop customization/veto controls, embedded **Interrogation & What-If Chamber**, and **Sentinel Multi-Modal Chart Vision Diagnostics**.
+- Features a header score gauge, dynamic routing strategy bar, historical deliberation trajectory ribbon, accuracy track record panel, committee consensus & dissent meter, primary dissenting voice callout, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, standby badges on dormant agents, interactive tabs to read the unvarnished arguments of each agent, Human-in-the-Loop customization/veto controls, embedded **Interrogation & What-If Chamber**, **Sentinel Multi-Modal Chart Vision Diagnostics**, and **Institutional Executive Dossier Export Engine (PDF, Markdown, Audio)**.
 
 ---
 
@@ -1064,7 +1077,8 @@ In your Vercel Project Settings &rarr; **Environment Variables**, set:
 | Metric / Pipeline | Expected Standard | Verified Result | Status |
 | :--- | :--- | :--- | :--- |
 | **TypeScript Compilation** | Zero type errors (`npx tsc --noEmit`) | **0 Errors (Exit code 0)** | Passed |
-| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **33 Routes Compiled Successfully** | Passed |
+| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **34 Routes Compiled Successfully** | Passed |
+| **Institutional Executive Dossier & Report Export** | Multi-page memo, printable PDF/HTML & audio briefing | **33/33 Tests Passed (/api/ai/council/dossier)** | Passed |
 | **Portfolio Health & Automated Rebalancing** | HHI Index, sector caps, share sizing & capital redeployment | **36/36 Tests Passed (/api/ai/portfolio/rebalance)** | Passed |
 | **Multi-Modal Chart Pattern Vision** | Candlestick formations, structural patterns & targets | **19/19 Tests Passed (/api/ai/vision/analyze)** | Passed |
 | **Deliberation Calibration & Accuracy** | Retrospective evaluation, win rates & Brier score | **31/31 Tests Passed (/api/ai/council/calibration)** | Passed |

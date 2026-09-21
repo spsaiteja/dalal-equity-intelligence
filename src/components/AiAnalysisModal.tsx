@@ -51,7 +51,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                   Gemini Deep Dive: {analysis?.companyName || symbol}
                 </h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">
-                  {symbol.replace('.NS', '')}
+                  {String(symbol || '').replace('.NS', '')}
                 </span>
               </div>
               <p className="text-xs text-surface-muted">
@@ -121,12 +121,12 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                   </div>
                   <span
                     className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full mt-0.5 ${
-                      analysis.conviction.includes('BUY')
+                      String(analysis.conviction || '').includes('BUY')
                         ? 'bg-emerald-500/20 text-emerald-400'
                         : 'bg-rose-500/20 text-rose-400'
                     }`}
                   >
-                    {analysis.conviction.replace('_', ' ')}
+                    {String(analysis.conviction || 'NEUTRAL').replace(/_/g, ' ')}
                   </span>
                 </div>
               </div>
@@ -204,7 +204,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                     <span>Upside Catalysts</span>
                   </h5>
                   <ul className="space-y-2 text-xs text-surface-foreground">
-                    {analysis.catalysts.map((cat, i) => (
+                    {(analysis.catalysts || []).map((cat, i) => (
                       <li key={i} className="flex items-start gap-2">
                         <span className="text-emerald-500 font-bold mt-0.5">•</span>
                         <span>{cat}</span>
@@ -220,7 +220,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                     <span>Key Downside Risks</span>
                   </h5>
                   <ul className="space-y-2 text-xs text-surface-foreground">
-                    {analysis.downsideRisks.map((risk, i) => (
+                    {(analysis.downsideRisks || []).map((risk, i) => (
                       <li key={i} className="flex items-start gap-2">
                         <span className="text-rose-500 font-bold mt-0.5">•</span>
                         <span>{risk}</span>

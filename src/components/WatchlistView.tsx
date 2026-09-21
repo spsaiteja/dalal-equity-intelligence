@@ -246,7 +246,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({
                         <div className="font-bold text-white flex items-center gap-1.5">
                           <span>{item.name}</span>
                           <span className="text-[10px] text-surface-muted font-normal">
-                            ({item.symbol.replace('.NS', '')})
+                            ({String(item.symbol || '').replace('.NS', '')})
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
@@ -330,7 +330,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({
                       <span
                         className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${signalBadge}`}
                       >
-                        {signal.replace('_', ' ')}
+                        {String(signal || 'HOLD').replace(/_/g, ' ')}
                       </span>
                     </td>
 

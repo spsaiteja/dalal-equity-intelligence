@@ -237,13 +237,14 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-surface-border">
-                        {report.rebalancingPlan.map((item, idx) => {
+                        {(report.rebalancingPlan || []).map((item, idx) => {
                           let actionBadge = 'bg-surface text-surface-muted border-surface-border';
-                          if (item.action.includes('ACCUMULATE') || item.action === 'STRONG_ACCUMULATE') {
+                          const actionStr = String(item.action || '');
+                          if (actionStr.includes('ACCUMULATE') || actionStr === 'STRONG_ACCUMULATE') {
                             actionBadge = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-                          } else if (item.action.includes('PROFIT')) {
+                          } else if (actionStr.includes('PROFIT')) {
                             actionBadge = 'bg-amber-500/10 text-amber-300 border-amber-500/30';
-                          } else if (item.action.includes('EXIT')) {
+                          } else if (actionStr.includes('EXIT')) {
                             actionBadge = 'bg-rose-500/10 text-rose-400 border-rose-500/30';
                           }
 
@@ -260,7 +261,7 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                               </td>
                               <td className="py-2.5 px-3 text-center">
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${actionBadge}`}>
-                                  {item.action.replace(/_/g, ' ')}
+                                  {actionStr.replace(/_/g, ' ')}
                                 </span>
                               </td>
                               <td className="py-2.5 px-3 text-emerald-400 font-semibold font-mono">
@@ -300,11 +301,11 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                             <Award className="h-3 w-3 text-purple-400" /> Grade & Score
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xl font-black text-white">{rebalancePlan.currentHealth.grade}</span>
-                            <span className="text-xs font-bold text-purple-400">({rebalancePlan.currentHealth.healthScore}/100)</span>
+                            <span className="text-xl font-black text-white">{rebalancePlan.currentHealth?.grade || 'N/A'}</span>
+                            <span className="text-xs font-bold text-purple-400">({rebalancePlan.currentHealth?.healthScore ?? 0}/100)</span>
                           </div>
                           <div className="text-[10px] text-surface-muted">
-                            Projected: <span className="text-emerald-400 font-semibold">{rebalancePlan.projectedHealth.projectedGrade} ({rebalancePlan.projectedHealth.projectedScore}/100)</span>
+                            Projected: <span className="text-emerald-400 font-semibold">{rebalancePlan.projectedHealth?.projectedGrade || 'N/A'} ({rebalancePlan.projectedHealth?.projectedScore ?? 0}/100)</span>
                           </div>
                         </div>
 
@@ -313,10 +314,10 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                             <Scale className="h-3 w-3 text-blue-400" /> HHI Index
                           </div>
                           <div className="text-xl font-black text-white font-mono">
-                            {rebalancePlan.currentHealth.hhiIndex}
+                            {rebalancePlan.currentHealth?.hhiIndex ?? 0}
                           </div>
                           <div className="text-[10px] text-surface-muted">
-                            {rebalancePlan.currentHealth.hhiIndex < 1500 ? 'Well-Diversified' : rebalancePlan.currentHealth.hhiIndex < 2500 ? 'Moderate' : 'High Concentration'}
+                            {(rebalancePlan.currentHealth?.hhiIndex ?? 0) < 1500 ? 'Well-Diversified' : (rebalancePlan.currentHealth?.hhiIndex ?? 0) < 2500 ? 'Moderate' : 'High Concentration'}
                           </div>
                         </div>
 
@@ -325,10 +326,10 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                             <DollarSign className="h-3 w-3 text-emerald-400" /> Freed Risk Capital
                           </div>
                           <div className="text-xl font-black text-emerald-400 font-mono">
-                            ₹{rebalancePlan.projectedHealth.freedCapitalINR.toLocaleString('en-IN')}
+                            ₹{Number(rebalancePlan.projectedHealth?.freedCapitalINR ?? 0).toLocaleString('en-IN')}
                           </div>
                           <div className="text-[10px] text-surface-muted">
-                            Redeployed: ₹{rebalancePlan.projectedHealth.reallocatedCapitalINR.toLocaleString('en-IN')}
+                            Redeployed: ₹{Number(rebalancePlan.projectedHealth?.reallocatedCapitalINR ?? 0).toLocaleString('en-IN')}
                           </div>
                         </div>
 
@@ -337,26 +338,26 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                             <Shield className="h-3 w-3 text-amber-400" /> Drawdown Risk
                           </div>
                           <div className={`text-xl font-black ${
-                            rebalancePlan.currentHealth.maxDrawdownRisk === 'HIGH' ? 'text-rose-400' :
-                            rebalancePlan.currentHealth.maxDrawdownRisk === 'ELEVATED' ? 'text-amber-400' : 'text-emerald-400'
+                            rebalancePlan.currentHealth?.maxDrawdownRisk === 'HIGH' ? 'text-rose-400' :
+                            rebalancePlan.currentHealth?.maxDrawdownRisk === 'ELEVATED' ? 'text-amber-400' : 'text-emerald-400'
                           }`}>
-                            {rebalancePlan.currentHealth.maxDrawdownRisk}
+                            {rebalancePlan.currentHealth?.maxDrawdownRisk || 'MODERATE'}
                           </div>
                           <div className="text-[10px] text-surface-muted">
-                            {rebalancePlan.currentHealth.violations.length} policy alerts
+                            {(rebalancePlan.currentHealth?.violations || []).length} policy alerts
                           </div>
                         </div>
                       </div>
 
                       {/* Violations Strip */}
-                      {rebalancePlan.currentHealth.violations.length > 0 && (
+                      {(rebalancePlan.currentHealth?.violations || []).length > 0 && (
                         <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 space-y-1.5">
                           <div className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
-                            Active Concentration & Risk Violations ({rebalancePlan.currentHealth.violations.length})
+                            Active Concentration & Risk Violations ({(rebalancePlan.currentHealth?.violations || []).length})
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {rebalancePlan.currentHealth.violations.map((v, i) => (
+                            {(rebalancePlan.currentHealth?.violations || []).map((v, i) => (
                               <div key={i} className="text-[11px] text-rose-200 bg-rose-950/40 p-2 rounded-lg border border-rose-500/20">
                                 <span className="font-bold">{v.description}</span>: Current {v.currentValue} (Mandated {v.limit})
                               </div>
@@ -380,7 +381,7 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-surface-border">
-                            {rebalancePlan.actions.map((act, idx) => {
+                            {(rebalancePlan.actions || []).map((act, idx) => {
                               let badgeColor = 'bg-surface text-surface-muted border-surface-border';
                               if (act.action === 'TRIM') badgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
                               else if (act.action === 'EXIT') badgeColor = 'bg-rose-500/10 text-rose-400 border-rose-500/30';
@@ -398,21 +399,21 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                                     </span>
                                   </td>
                                   <td className={`py-2.5 px-3 font-mono font-bold ${
-                                    act.deltaShares < 0 ? 'text-amber-400' : act.deltaShares > 0 ? 'text-emerald-400' : 'text-surface-muted'
+                                    (act.deltaShares ?? 0) < 0 ? 'text-amber-400' : (act.deltaShares ?? 0) > 0 ? 'text-emerald-400' : 'text-surface-muted'
                                   }`}>
-                                    {act.deltaShares > 0 ? `+${act.deltaShares}` : act.deltaShares} shares
-                                    <div className="text-[10px] font-normal text-surface-muted">({act.currentShares} → {act.targetShares})</div>
+                                    {(act.deltaShares ?? 0) > 0 ? `+${act.deltaShares}` : (act.deltaShares ?? 0)} shares
+                                    <div className="text-[10px] font-normal text-surface-muted">({act.currentShares ?? 0} → {act.targetShares ?? 0})</div>
                                   </td>
                                   <td className={`py-2.5 px-3 font-mono font-semibold ${
-                                    act.capitalDeltaINR < 0 ? 'text-emerald-400' : act.capitalDeltaINR > 0 ? 'text-blue-400' : 'text-surface-muted'
+                                    (act.capitalDeltaINR ?? 0) < 0 ? 'text-emerald-400' : (act.capitalDeltaINR ?? 0) > 0 ? 'text-blue-400' : 'text-surface-muted'
                                   }`}>
-                                    {act.capitalDeltaINR !== 0 ? `₹${Math.abs(act.capitalDeltaINR).toLocaleString('en-IN')}` : '₹0'}
+                                    {(act.capitalDeltaINR ?? 0) !== 0 ? `₹${Math.abs(act.capitalDeltaINR ?? 0).toLocaleString('en-IN')}` : '₹0'}
                                     <div className="text-[10px] font-normal text-surface-muted">
-                                      {act.capitalDeltaINR < 0 ? 'Freed to Cash' : act.capitalDeltaINR > 0 ? 'Deployed' : 'Preserved'}
+                                      {(act.capitalDeltaINR ?? 0) < 0 ? 'Freed to Cash' : (act.capitalDeltaINR ?? 0) > 0 ? 'Deployed' : 'Preserved'}
                                     </div>
                                   </td>
                                   <td className="py-2.5 px-3 font-medium text-white">
-                                    {act.currentWeightPercent}% → <span className="font-bold text-purple-300">{act.targetWeightPercent}%</span>
+                                    {act.currentWeightPercent ?? 0}% → <span className="font-bold text-purple-300">{act.targetWeightPercent ?? 0}%</span>
                                   </td>
                                   <td className="py-2.5 px-3">
                                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
@@ -421,7 +422,7 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                                       act.urgency === 'MEDIUM' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
                                       'bg-surface text-surface-muted'
                                     }`}>
-                                      {act.urgency}
+                                      {act.urgency || 'MEDIUM'}
                                     </span>
                                   </td>
                                   <td className="py-2.5 px-3 text-[11px] text-surface-text max-w-xs leading-relaxed">
@@ -471,7 +472,7 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
               {activeTab === 'sectors' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {report.sectorWeights.map((sec, idx) => {
+                    {(report.sectorWeights || []).map((sec, idx) => {
                       let badge = 'bg-blue-500/10 text-blue-300 border-blue-500/30';
                       if (sec.riskRating === 'Overweight') {
                         badge = 'bg-amber-500/10 text-amber-300 border-amber-500/30';
@@ -491,21 +492,21 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
 
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-surface-muted">
-                              ₹{sec.investedAmount.toLocaleString('en-IN')}
+                              ₹{Number(sec.investedAmount ?? 0).toLocaleString('en-IN')}
                             </span>
-                            <span className="font-black text-white">{sec.percentage}%</span>
+                            <span className="font-black text-white">{sec.percentage ?? 0}%</span>
                           </div>
 
                           <div className="h-1.5 bg-surface-card rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full ${
-                                sec.percentage > 35
+                                (sec.percentage ?? 0) > 35
                                   ? 'bg-amber-500'
-                                  : sec.percentage > 20
+                                  : (sec.percentage ?? 0) > 20
                                   ? 'bg-blue-500'
                                   : 'bg-indigo-500'
                               }`}
-                              style={{ width: `${Math.min(100, sec.percentage * 2)}%` }}
+                              style={{ width: `${Math.min(100, (sec.percentage ?? 0) * 2)}%` }}
                             />
                           </div>
                         </div>
@@ -527,15 +528,15 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                       <div>
                         <div className="text-xs font-bold text-white">Risk Guardian</div>
                         <div className="text-[10px] text-surface-muted">
-                          Diversification Score: {report.agentAudits.riskGuardian.diversificationScore}/100
+                          Diversification Score: {report.agentAudits?.riskGuardian?.diversificationScore ?? 0}/100
                         </div>
                       </div>
                     </div>
                     <p className="text-xs text-surface-text">
-                      <strong>Top Concentration Risk:</strong> {report.agentAudits.riskGuardian.topRiskHolding}
+                      <strong>Top Concentration Risk:</strong> {report.agentAudits?.riskGuardian?.topRiskHolding || 'None detected'}
                     </p>
                     <ul className="text-[11px] text-surface-muted space-y-1 list-disc list-inside">
-                      {report.agentAudits.riskGuardian.mandatedRiskAdjustments.map((a, i) => (
+                      {(report.agentAudits?.riskGuardian?.mandatedRiskAdjustments || []).map((a, i) => (
                         <li key={i}>{a}</li>
                       ))}
                     </ul>
@@ -550,12 +551,12 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                       <div>
                         <div className="text-xs font-bold text-white">Sentinel Agent</div>
                         <div className="text-[10px] text-surface-muted">
-                          Stance: {report.agentAudits.sentinel.stance}
+                          Stance: {report.agentAudits?.sentinel?.stance || 'Neutral'}
                         </div>
                       </div>
                     </div>
                     <p className="text-xs text-surface-text leading-relaxed">
-                      {report.agentAudits.sentinel.technicalAlert}
+                      {report.agentAudits?.sentinel?.technicalAlert || 'Technicals are stable across holdings.'}
                     </p>
                   </div>
 
@@ -568,12 +569,12 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                       <div>
                         <div className="text-xs font-bold text-white">Agent Fundamentalist</div>
                         <div className="text-[10px] text-surface-muted">
-                          Portfolio Valuation: {report.agentAudits.fundamental.portfolioPeEstimate}
+                          Portfolio Valuation: {report.agentAudits?.fundamental?.portfolioPeEstimate || 'Fair Value'}
                         </div>
                       </div>
                     </div>
                     <p className="text-xs text-surface-text leading-relaxed">
-                      {report.agentAudits.fundamental.valuationAssessment}
+                      {report.agentAudits?.fundamental?.valuationAssessment || 'Fundamentals are solid across core positions.'}
                     </p>
                   </div>
 
@@ -586,12 +587,12 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                       <div>
                         <div className="text-xs font-bold text-white">News Scout Agent</div>
                         <div className="text-[10px] text-surface-muted">
-                          Macro Sentiment: {report.agentAudits.newsScout.headlineSentiment}
+                          Macro Sentiment: {report.agentAudits?.newsScout?.headlineSentiment || 'Neutral'}
                         </div>
                       </div>
                     </div>
                     <ul className="text-[11px] text-surface-muted space-y-1 list-disc list-inside">
-                      {report.agentAudits.newsScout.catalystsIdentified.map((c, i) => (
+                      {(report.agentAudits?.newsScout?.catalystsIdentified || []).map((c, i) => (
                         <li key={i}>{c}</li>
                       ))}
                     </ul>

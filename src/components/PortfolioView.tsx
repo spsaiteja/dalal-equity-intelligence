@@ -87,7 +87,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             <Wallet className="h-4 w-4 text-blue-400" />
           </div>
           <div className="text-2xl font-black text-white">
-            ₹{summary ? summary.total_invested.toLocaleString('en-IN') : '0'}
+            ₹{summary ? Number(summary.total_invested || 0).toLocaleString('en-IN') : '0'}
           </div>
           <div className="text-[11px] text-surface-muted">
             Across <span className="text-white font-bold">{summary?.holdings_count || holdings.length}</span> Demat holdings
@@ -101,7 +101,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             <Building2 className="h-4 w-4 text-indigo-400" />
           </div>
           <div className="text-2xl font-black text-white">
-            ₹{summary ? summary.current_value.toLocaleString('en-IN') : '0'}
+            ₹{summary ? Number(summary.current_value || 0).toLocaleString('en-IN') : '0'}
           </div>
           <div className="text-[11px] text-surface-muted">
             Live Dalal Street market valuation
@@ -130,7 +130,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             }`}
           >
             {isOverallPositive ? '+' : ''}₹
-            {summary ? Math.abs(summary.total_pnl).toLocaleString('en-IN') : '0'}
+            {summary ? Math.abs(Number(summary.total_pnl || 0)).toLocaleString('en-IN') : '0'}
           </div>
           <div className="text-[11px] font-bold flex items-center gap-1">
             <span
@@ -169,7 +169,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             }`}
           >
             {isDayPositive ? '+' : ''}₹
-            {summary ? Math.abs(summary.day_pnl).toLocaleString('en-IN') : '0'}
+            {summary ? Math.abs(Number(summary.day_pnl || 0)).toLocaleString('en-IN') : '0'}
           </div>
           <div className="text-[11px] font-bold flex items-center gap-1">
             <span
@@ -452,10 +452,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
 
                         <div className="text-right font-mono">
                           <span className="text-xs font-black text-white block">
-                            ₹{alert.currentPrice.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            ₹{Number(alert.currentPrice || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                           </span>
                           <span className="text-[10px] text-surface-muted block">
-                            Avg: ₹{alert.averagePrice.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            Avg: ₹{Number(alert.averagePrice || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                           </span>
                         </div>
                       </div>
@@ -624,22 +624,22 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
 
                     {/* Average Price */}
                     <td className="py-3 px-3 text-right font-mono text-surface-muted">
-                      ₹{h.average_price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                      ₹{Number(h.average_price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                     </td>
 
                     {/* LTP */}
                     <td className="py-3 px-3 text-right font-mono font-bold text-white">
-                      ₹{h.last_price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                      ₹{Number(h.last_price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                     </td>
 
                     {/* Invested Value */}
                     <td className="py-3 px-3 text-right font-mono text-surface-muted">
-                      ₹{h.invested_value.toLocaleString('en-IN')}
+                      ₹{Number(h.invested_value || 0).toLocaleString('en-IN')}
                     </td>
 
                     {/* Current Value */}
                     <td className="py-3 px-3 text-right font-mono font-semibold text-white">
-                      ₹{h.current_value.toLocaleString('en-IN')}
+                      ₹{Number(h.current_value || 0).toLocaleString('en-IN')}
                     </td>
 
                     {/* Day's Gain */}
@@ -659,7 +659,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                           isHoldingPositive ? 'text-emerald-400' : 'text-rose-400'
                         }`}
                       >
-                        {isHoldingPositive ? '+' : ''}₹{h.pnl.toLocaleString('en-IN')}
+                        {isHoldingPositive ? '+' : ''}₹{Number(h.pnl || 0).toLocaleString('en-IN')}
                       </div>
                       <div
                         className={`text-[10px] font-semibold ${

@@ -413,12 +413,12 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-white font-bold text-[11px]">
-                          Routing: {consensus.metadata.routing.resolvedMode.replace(/_/g, ' ')}
+                          Routing: {String(consensus.metadata.routing.resolvedMode || '').replace(/_/g, ' ')}
                         </span>
                         <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 font-bold border border-indigo-500/20 uppercase">
-                          {consensus.metadata.routing.profile.replace(/_/g, ' ')}
+                          {String(consensus.metadata.routing.profile || '').replace(/_/g, ' ')}
                         </span>
-                        {consensus.metadata.routing.estimatedLatencySavingsPercent > 0 && (
+                        {(consensus.metadata.routing.estimatedLatencySavingsPercent ?? 0) > 0 && (
                           <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
                             ~{consensus.metadata.routing.estimatedLatencySavingsPercent}% Latency Saved
                           </span>
@@ -431,16 +431,16 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                   </div>
                   <div className="flex items-center gap-1.5 text-[10.5px]">
                     <span className="text-surface-muted font-bold">Active:</span>
-                    {consensus.metadata.routing.activeAgents.map((ag) => (
+                    {(consensus.metadata.routing.activeAgents || []).map((ag) => (
                       <span key={ag} className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase font-semibold text-[9.5px]">
                         {ag}
                       </span>
                     ))}
-                    {consensus.metadata.routing.dormantAgents.length > 0 && (
+                    {(consensus.metadata.routing.dormantAgents || []).length > 0 && (
                       <>
                         <span className="text-surface-border mx-1">|</span>
                         <span className="text-surface-muted font-bold">Standby:</span>
-                        {consensus.metadata.routing.dormantAgents.map((ag) => (
+                        {(consensus.metadata.routing.dormantAgents || []).map((ag) => (
                           <span key={ag} className="px-1.5 py-0.5 rounded bg-surface border border-surface-border text-surface-muted uppercase font-semibold text-[9.5px]">
                             {ag}
                           </span>
@@ -464,7 +464,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-2xl font-black text-white">
-                          {(consensus.cioVerdict || 'NEUTRAL').replace('_', ' ')}
+                          {String(consensus.cioVerdict || 'NEUTRAL').replace(/_/g, ' ')}
                         </span>
                         <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                           Score: {consensus.overallScore ?? 7} / 10
@@ -478,7 +478,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       Current Price
                     </span>
                     <span className="text-xl font-black text-white">
-                      ₹{(consensus.currentPrice ?? 0).toLocaleString('en-IN')}
+                      ₹{Number(consensus.currentPrice ?? 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
@@ -715,11 +715,11 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-white">Prior Committee Review</span>
                         <span className="text-[10px] text-surface-muted">
-                          ({consensus.metadata.previousRun.elapsedTimeText})
+                          ({consensus.metadata.previousRun.elapsedTimeText || 'Recent'})
                         </span>
                       </div>
                       <div className="text-[11px] text-surface-muted flex items-center gap-2 mt-0.5">
-                        <span>Prior Price: <strong className="text-white">₹{consensus.metadata.previousRun.price.toLocaleString('en-IN')}</strong></span>
+                        <span>Prior Price: <strong className="text-white">₹{Number(consensus.metadata.previousRun.price || 0).toLocaleString('en-IN')}</strong></span>
                         <span className="text-surface-border">•</span>
                         <span>Verdict: <strong className="text-purple-300">{consensus.metadata.previousRun.cioVerdict}</strong></span>
                       </div>
@@ -731,18 +731,18 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       <span className="text-[10px] uppercase font-bold text-surface-muted block">Trajectory Return</span>
                       <span
                         className={`text-xs font-black flex items-center gap-1 sm:justify-end ${
-                          consensus.metadata.previousRun.priceDeltaPercent >= 0
+                          (consensus.metadata.previousRun.priceDeltaPercent ?? 0) >= 0
                             ? 'text-emerald-400'
                             : 'text-rose-400'
                         }`}
                       >
-                        {consensus.metadata.previousRun.priceDeltaPercent >= 0 ? (
+                        {(consensus.metadata.previousRun.priceDeltaPercent ?? 0) >= 0 ? (
                           <TrendingUp className="h-3.5 w-3.5" />
                         ) : (
                           <TrendingDown className="h-3.5 w-3.5" />
                         )}
-                        {consensus.metadata.previousRun.priceDeltaPercent >= 0 ? '+' : ''}
-                        {consensus.metadata.previousRun.priceDeltaPercent}%
+                        {(consensus.metadata.previousRun.priceDeltaPercent ?? 0) >= 0 ? '+' : ''}
+                        {consensus.metadata.previousRun.priceDeltaPercent ?? 0}%
                       </span>
                     </div>
                   </div>
@@ -750,7 +750,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
               )}
 
               {/* Phase 12: Historical Deliberation Accuracy & Calibration Track Record */}
-              {consensus.metadata?.calibration && consensus.metadata.calibration.evaluations.length > 0 && (
+              {consensus.metadata?.calibration && (consensus.metadata.calibration.evaluations || []).length > 0 && (
                 <div className="bg-surface/50 border border-surface-border rounded-xl p-3.5 space-y-2.5 text-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -763,10 +763,10 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                             Council Accuracy Track Record ({consensus.symbol})
                           </span>
                           <span className="text-[9.5px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-                            {consensus.metadata.calibration.metrics.directionalWinRatePercent}% Win Rate
+                            {consensus.metadata.calibration.metrics?.directionalWinRatePercent ?? 0}% Win Rate
                           </span>
                           <span className="text-[9.5px] px-1.5 py-0.5 rounded-full bg-surface border border-surface-border text-surface-muted">
-                            {consensus.metadata.calibration.metrics.totalEvaluatedRuns} Audited Deliberations
+                            {consensus.metadata.calibration.metrics?.totalEvaluatedRuns ?? 0} Audited Deliberations
                           </span>
                         </div>
                       </div>
@@ -774,18 +774,18 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
 
                     <div className="flex items-center gap-3 text-[10.5px] font-mono">
                       <span className="text-surface-muted">
-                        Profit Factor: <strong className="text-white">{consensus.metadata.calibration.metrics.profitFactor}x</strong>
+                        Profit Factor: <strong className="text-white">{consensus.metadata.calibration.metrics?.profitFactor ?? 0}x</strong>
                       </span>
                       <span className="text-surface-border">|</span>
                       <span className="text-surface-muted">
-                        Brier Calibration: <strong className="text-purple-300">{consensus.metadata.calibration.metrics.brierAccuracyScore.toFixed(2)}</strong>
+                        Brier Calibration: <strong className="text-purple-300">{(consensus.metadata.calibration.metrics?.brierAccuracyScore ?? 0).toFixed(2)}</strong>
                       </span>
                     </div>
                   </div>
 
                   {/* Micro evaluation history pills */}
                   <div className="flex flex-wrap gap-1.5 pt-1 border-t border-surface-border/50">
-                    {consensus.metadata.calibration.evaluations.slice(0, 5).map((ev) => (
+                    {(consensus.metadata.calibration.evaluations || []).slice(0, 5).map((ev) => (
                       <div
                         key={ev.runId}
                         className={`text-[9.5px] px-2 py-1 rounded-md border flex items-center gap-1.5 ${
@@ -797,7 +797,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                         }`}
                       >
                         <span className="font-bold">{ev.cioVerdict}</span>
-                        <span>({ev.priceChangePercent >= 0 ? '+' : ''}{ev.priceChangePercent}%)</span>
+                        <span>{(ev.priceChangePercent ?? 0) >= 0 ? '+' : ''}{ev.priceChangePercent}%</span>
                         <span className="opacity-60">{ev.holdingPeriodDays}d ago</span>
                       </div>
                     ))}
@@ -816,26 +816,26 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                       </span>
                       <span
                         className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                          consensus.metadata.dissentAnalysis.breakdown.consensusStrength === 'UNANIMOUS'
+                          consensus.metadata.dissentAnalysis.breakdown?.consensusStrength === 'UNANIMOUS'
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : consensus.metadata.dissentAnalysis.breakdown.consensusStrength === 'STRONG_CONCURRENCE'
+                            : consensus.metadata.dissentAnalysis.breakdown?.consensusStrength === 'STRONG_CONCURRENCE'
                             ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
-                            : consensus.metadata.dissentAnalysis.breakdown.consensusStrength === 'MODERATE_SPLIT'
+                            : consensus.metadata.dissentAnalysis.breakdown?.consensusStrength === 'MODERATE_SPLIT'
                             ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                             : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse'
                         }`}
                       >
-                        {consensus.metadata.dissentAnalysis.breakdown.consensusStrength.replace('_', ' ')}
+                        {String(consensus.metadata.dissentAnalysis.breakdown?.consensusStrength || 'CONSENSUS').replace(/_/g, ' ')}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-3 text-xs font-mono">
                       <span className="text-surface-muted text-[11px]">
-                        Agreement Index: <strong className="text-white">{consensus.metadata.dissentAnalysis.breakdown.agreementIndexPercent}%</strong>
+                        Agreement Index: <strong className="text-white">{consensus.metadata.dissentAnalysis.breakdown?.agreementIndexPercent ?? 0}%</strong>
                       </span>
                       <span className="text-surface-border">|</span>
                       <span className="text-surface-muted text-[11px]">
-                        Polarization: <strong className="text-purple-300 font-mono">{consensus.metadata.dissentAnalysis.polarizationScore.toFixed(2)}</strong>
+                        Polarization: <strong className="text-purple-300 font-mono">{(consensus.metadata.dissentAnalysis.polarizationScore ?? 0).toFixed(2)}</strong>
                       </span>
                     </div>
                   </div>
@@ -843,40 +843,40 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                   {/* Stance Alignment Progress Bar */}
                   <div className="space-y-1">
                     <div className="h-2 w-full bg-surface rounded-full overflow-hidden flex border border-surface-border/50">
-                      {consensus.metadata.dissentAnalysis.breakdown.bullishPercent > 0 && (
+                      {(consensus.metadata.dissentAnalysis.breakdown?.bullishPercent ?? 0) > 0 && (
                         <div
-                          style={{ width: `${consensus.metadata.dissentAnalysis.breakdown.bullishPercent}%` }}
+                          style={{ width: `${consensus.metadata.dissentAnalysis.breakdown?.bullishPercent}%` }}
                           className="bg-emerald-500 h-full transition-all"
-                          title={`Bullish: ${consensus.metadata.dissentAnalysis.breakdown.bullishPercent}%`}
+                          title={`Bullish: ${consensus.metadata.dissentAnalysis.breakdown?.bullishPercent}%`}
                         />
                       )}
-                      {consensus.metadata.dissentAnalysis.breakdown.neutralPercent > 0 && (
+                      {(consensus.metadata.dissentAnalysis.breakdown?.neutralPercent ?? 0) > 0 && (
                         <div
-                          style={{ width: `${consensus.metadata.dissentAnalysis.breakdown.neutralPercent}%` }}
+                          style={{ width: `${consensus.metadata.dissentAnalysis.breakdown?.neutralPercent}%` }}
                           className="bg-amber-500 h-full transition-all"
-                          title={`Neutral: ${consensus.metadata.dissentAnalysis.breakdown.neutralPercent}%`}
+                          title={`Neutral: ${consensus.metadata.dissentAnalysis.breakdown?.neutralPercent}%`}
                         />
                       )}
-                      {consensus.metadata.dissentAnalysis.breakdown.bearishPercent > 0 && (
+                      {(consensus.metadata.dissentAnalysis.breakdown?.bearishPercent ?? 0) > 0 && (
                         <div
-                          style={{ width: `${consensus.metadata.dissentAnalysis.breakdown.bearishPercent}%` }}
+                          style={{ width: `${consensus.metadata.dissentAnalysis.breakdown?.bearishPercent}%` }}
                           className="bg-rose-500 h-full transition-all"
-                          title={`Bearish: ${consensus.metadata.dissentAnalysis.breakdown.bearishPercent}%`}
+                          title={`Bearish: ${consensus.metadata.dissentAnalysis.breakdown?.bearishPercent}%`}
                         />
                       )}
                     </div>
                     <div className="flex justify-between text-[10px] text-surface-muted">
                       <span className="flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        Bullish ({consensus.metadata.dissentAnalysis.breakdown.bullishCount})
+                        Bullish ({consensus.metadata.dissentAnalysis.breakdown?.bullishCount ?? 0})
                       </span>
                       <span className="flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        Neutral ({consensus.metadata.dissentAnalysis.breakdown.neutralCount})
+                        Neutral ({consensus.metadata.dissentAnalysis.breakdown?.neutralCount ?? 0})
                       </span>
                       <span className="flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                        Bearish ({consensus.metadata.dissentAnalysis.breakdown.bearishCount})
+                        Bearish ({consensus.metadata.dissentAnalysis.breakdown?.bearishCount ?? 0})
                       </span>
                     </div>
                   </div>
@@ -972,28 +972,39 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                           <div className="flex items-center gap-1.5">
                             <Eye className="h-3 w-3 text-blue-400" />
                             <span className="font-bold text-white uppercase text-[9.5px]">
-                              {consensus.agents.sentinel.chartVision.primaryPattern.replace(/_/g, ' ')}
+                              {typeof consensus.agents.sentinel.chartVision.primaryPattern === 'string'
+                                ? consensus.agents.sentinel.chartVision.primaryPattern.replace(/_/g, ' ')
+                                : String((consensus.agents.sentinel.chartVision.primaryPattern as any)?.patternName || 'PATTERN').replace(/_/g, ' ')}
                             </span>
                           </div>
                           <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-300 font-bold border border-blue-500/20">
-                            {consensus.agents.sentinel.chartVision.patternConfidence}% Match
+                            {consensus.agents.sentinel.chartVision.patternConfidence ?? 0}% Match
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-1">
-                          {consensus.agents.sentinel.chartVision.candlestickFormations.filter(f => f !== 'NONE').map((formation) => (
-                            <span key={formation} className="text-[8.5px] px-1.5 py-0.2 rounded bg-surface border border-surface-border text-surface-muted font-mono">
-                              {formation.replace(/_/g, ' ')}
-                            </span>
-                          ))}
+                          {(consensus.agents.sentinel.chartVision.candlestickFormations || [])
+                            .filter((f) => {
+                              if (!f) return false;
+                              if (typeof f === 'string') return f !== 'NONE';
+                              return (f as any)?.formation !== 'NONE';
+                            })
+                            .map((formation, idx) => {
+                              const formStr = typeof formation === 'string' ? formation : (formation as any)?.formation || 'FORMATION';
+                              return (
+                                <span key={idx} className="text-[8.5px] px-1.5 py-0.2 rounded bg-surface border border-surface-border text-surface-muted font-mono">
+                                  {formStr.replace(/_/g, ' ')}
+                                </span>
+                              );
+                            })}
                           <span className="text-[9.5px] text-surface-muted ml-auto">
-                            Target: <strong className="text-emerald-400">{consensus.agents.sentinel.chartVision.breakoutTarget}</strong>
+                            Target: <strong className="text-emerald-400">{consensus.agents.sentinel.chartVision.breakoutTarget || 'N/A'}</strong>
                           </span>
                         </div>
                       </div>
                     )}
 
                     <ul className="space-y-1 text-[11px] text-surface-muted">
-                      {consensus.agents.sentinel.arguments.map((arg, i) => (
+                      {(consensus.agents.sentinel.arguments || []).map((arg, i) => (
                         <li key={i} className="flex items-start gap-1.5">
                           <span className="text-blue-500 font-bold">•</span>
                           <span>{arg}</span>
@@ -1042,7 +1053,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                     </div>
 
                     <ul className="space-y-1 text-[11px] text-surface-muted">
-                      {consensus.agents.fundamental.arguments.map((arg, i) => (
+                      {(consensus.agents.fundamental.arguments || []).map((arg, i) => (
                         <li key={i} className="flex items-start gap-1.5">
                           <span className="text-emerald-500 font-bold">•</span>
                           <span>{arg}</span>
@@ -1080,7 +1091,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                     </p>
 
                     <div className="space-y-1.5 mb-2.5">
-                      {consensus.agents.newsScout.catalystsIdentified.map((cat, i) => (
+                      {(consensus.agents.newsScout.catalystsIdentified || []).map((cat, i) => (
                         <div key={i} className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 p-1.5 rounded-lg flex items-center gap-1.5">
                           <CheckCircle className="h-3 w-3 shrink-0" />
                           <span>{cat}</span>
@@ -1089,7 +1100,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                     </div>
 
                     <ul className="space-y-1 text-[11px] text-surface-muted">
-                      {consensus.agents.newsScout.arguments.map((arg, i) => (
+                      {(consensus.agents.newsScout.arguments || []).map((arg, i) => (
                         <li key={i} className="flex items-start gap-1.5">
                           <span className="text-amber-500 font-bold">•</span>
                           <span>{arg}</span>
@@ -1138,7 +1149,7 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                     </div>
 
                     <ul className="space-y-1 text-[11px] text-surface-muted">
-                      {consensus.agents.riskGuardian.arguments.map((arg, i) => (
+                      {(consensus.agents.riskGuardian.arguments || []).map((arg, i) => (
                         <li key={i} className="flex items-start gap-1.5">
                           <span className="text-rose-500 font-bold">•</span>
                           <span>{arg}</span>

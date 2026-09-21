@@ -2,6 +2,52 @@
   "bySymbol": {
     "TCS": [
       {
+        "runId": "run-test-1790023584303",
+        "symbol": "TCS",
+        "decision": "MODIFIED_BY_HUMAN",
+        "operatorRole": "HUMAN_OPERATOR",
+        "originalPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "humanPlan": {
+          "target1": "₹2,750",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,420",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "approvalId": "appr-d25b2eea-dda",
+        "timestamp": "2026-09-21T20:46:24.350Z",
+        "isModified": true
+      },
+      {
+        "runId": "run-test-1790023584303",
+        "symbol": "TCS",
+        "decision": "APPROVED_AS_IS",
+        "operatorRole": "HUMAN_OPERATOR",
+        "originalPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "humanPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "approvalId": "appr-590835de-65a",
+        "timestamp": "2026-09-21T20:46:24.303Z",
+        "isModified": false
+      },
+      {
         "runId": "run-test-1790002890519",
         "symbol": "TCS",
         "decision": "MODIFIED_BY_HUMAN",
@@ -234,6 +280,29 @@
     ],
     "INFY": [
       {
+        "runId": "run-test-1790023584303",
+        "symbol": "INFY",
+        "decision": "MODIFIED_BY_HUMAN",
+        "operatorRole": "HUMAN_OPERATOR",
+        "originalPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "humanPlan": {
+          "target1": "₹2,750",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,420",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "approvalId": "appr-2c238fc2-ee8",
+        "timestamp": "2026-09-21T20:46:24.357Z",
+        "isModified": true
+      },
+      {
         "runId": "run-test-1790002890519",
         "symbol": "INFY",
         "decision": "MODIFIED_BY_HUMAN",
@@ -350,6 +419,30 @@
       }
     ],
     "RELIANCE": [
+      {
+        "runId": "run-test-1790023584303",
+        "symbol": "RELIANCE",
+        "decision": "VETOED_BY_HUMAN",
+        "operatorRole": "HUMAN_OPERATOR",
+        "originalPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "humanPlan": {
+          "target1": "₹2,650",
+          "target2": "₹2,800",
+          "stopLoss": "₹2,350",
+          "positionAllocation": "10%",
+          "verdict": "ACCUMULATE"
+        },
+        "vetoReason": "Earnings release tonight; high volatility expected outside risk budget.",
+        "approvalId": "appr-a0571740-ee6",
+        "timestamp": "2026-09-21T20:46:24.362Z",
+        "isModified": false
+      },
       {
         "runId": "run-test-1790002890519",
         "symbol": "RELIANCE",
@@ -473,6 +566,99 @@
     ]
   },
   "recent": [
+    {
+      "runId": "run-test-1790023584303",
+      "symbol": "RELIANCE",
+      "decision": "VETOED_BY_HUMAN",
+      "operatorRole": "HUMAN_OPERATOR",
+      "originalPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "humanPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "vetoReason": "Earnings release tonight; high volatility expected outside risk budget.",
+      "approvalId": "appr-a0571740-ee6",
+      "timestamp": "2026-09-21T20:46:24.362Z",
+      "isModified": false
+    },
+    {
+      "runId": "run-test-1790023584303",
+      "symbol": "INFY",
+      "decision": "MODIFIED_BY_HUMAN",
+      "operatorRole": "HUMAN_OPERATOR",
+      "originalPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "humanPlan": {
+        "target1": "₹2,750",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,420",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "approvalId": "appr-2c238fc2-ee8",
+      "timestamp": "2026-09-21T20:46:24.357Z",
+      "isModified": true
+    },
+    {
+      "runId": "run-test-1790023584303",
+      "symbol": "TCS",
+      "decision": "MODIFIED_BY_HUMAN",
+      "operatorRole": "HUMAN_OPERATOR",
+      "originalPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "humanPlan": {
+        "target1": "₹2,750",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,420",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "approvalId": "appr-d25b2eea-dda",
+      "timestamp": "2026-09-21T20:46:24.350Z",
+      "isModified": true
+    },
+    {
+      "runId": "run-test-1790023584303",
+      "symbol": "TCS",
+      "decision": "APPROVED_AS_IS",
+      "operatorRole": "HUMAN_OPERATOR",
+      "originalPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "humanPlan": {
+        "target1": "₹2,650",
+        "target2": "₹2,800",
+        "stopLoss": "₹2,350",
+        "positionAllocation": "10%",
+        "verdict": "ACCUMULATE"
+      },
+      "approvalId": "appr-590835de-65a",
+      "timestamp": "2026-09-21T20:46:24.303Z",
+      "isModified": false
+    },
     {
       "runId": "run-test-1790002890519",
       "symbol": "RELIANCE",

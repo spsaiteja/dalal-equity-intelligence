@@ -33,6 +33,7 @@ import {
   Bot,
   HelpCircle,
   Scale,
+  Eye,
 } from 'lucide-react';
 import { CouncilRole, ChatMessage } from '@/types/chat';
 
@@ -862,6 +863,33 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                         <strong className="text-white">{consensus.agents.sentinel.keyLevels.immediateResistance}</strong>
                       </div>
                     </div>
+
+                    {/* Phase 13: Multi-Modal Chart Vision & Pattern Diagnostics */}
+                    {consensus.agents.sentinel.chartVision && (
+                      <div className="bg-blue-950/20 border border-blue-500/20 rounded-lg p-2 mb-2.5 space-y-1.5 text-[10.5px]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Eye className="h-3 w-3 text-blue-400" />
+                            <span className="font-bold text-white uppercase text-[9.5px]">
+                              {consensus.agents.sentinel.chartVision.primaryPattern.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-300 font-bold border border-blue-500/20">
+                            {consensus.agents.sentinel.chartVision.patternConfidence}% Match
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {consensus.agents.sentinel.chartVision.candlestickFormations.filter(f => f !== 'NONE').map((formation) => (
+                            <span key={formation} className="text-[8.5px] px-1.5 py-0.2 rounded bg-surface border border-surface-border text-surface-muted font-mono">
+                              {formation.replace(/_/g, ' ')}
+                            </span>
+                          ))}
+                          <span className="text-[9.5px] text-surface-muted ml-auto">
+                            Target: <strong className="text-emerald-400">{consensus.agents.sentinel.chartVision.breakoutTarget}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
                     <ul className="space-y-1 text-[11px] text-surface-muted">
                       {consensus.agents.sentinel.arguments.map((arg, i) => (

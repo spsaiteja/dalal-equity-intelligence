@@ -40,6 +40,7 @@ import { analyzeCouncilDissent } from './dissent-analyzer';
 import { CouncilExecutionMode } from '@/types/routing';
 import { determineExecutionRouting, getDormantAgentReport } from './router';
 import { getSymbolTrackRecord } from './calibration';
+import { analyzeChartVision } from './vision';
 
 /**
  * Execution Context for the AI Deliberation Run
@@ -332,6 +333,11 @@ export async function orchestrateCouncilDeliberation(
     durationMs: 0,
     status: 'fallback' as AgentExecutionStatus,
   };
+
+  if (routing.activeAgents.includes('sentinel')) {
+    sentinelData.data.chartVision = await analyzeChartVision(quote.symbol, [], quote).catch(() => undefined);
+  }
+
   context.agentOutputs.sentinel = sentinelData.data;
   context.metrics.sentinelMs = sentinelData.durationMs;
   context.status.sentinel = sentinelData.status;

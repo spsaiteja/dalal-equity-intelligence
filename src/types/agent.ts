@@ -24,6 +24,7 @@ export interface SentinelReport extends BaseAgentReport {
     majorBreakout: string;
   };
   trendAssessment: string;
+  chartVision?: import('./vision').VisionAnalysisReport;
 }
 
 export interface FundamentalReport extends BaseAgentReport {

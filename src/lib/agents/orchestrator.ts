@@ -39,6 +39,7 @@ import {
 import { analyzeCouncilDissent } from './dissent-analyzer';
 import { CouncilExecutionMode } from '@/types/routing';
 import { determineExecutionRouting, getDormantAgentReport } from './router';
+import { getSymbolTrackRecord } from './calibration';
 
 /**
  * Execution Context for the AI Deliberation Run
@@ -496,6 +497,8 @@ Return STRICT valid JSON:
     cioVerdict: finalConsensus.cioVerdict,
   });
 
+  const calibration = await getSymbolTrackRecord(quote.symbol, quote.price).catch(() => undefined);
+
   const metadata: OrchestrationMetadata = {
     runId,
     executionTimeMs: totalDurationMs,
@@ -510,6 +513,7 @@ Return STRICT valid JSON:
     tokenEstimate,
     dissentAnalysis,
     routing,
+    calibration,
     toolCallsCount: context.toolCalls.length,
     toolCalls: context.toolCalls.map((tc) => ({
       toolName: tc.toolName,

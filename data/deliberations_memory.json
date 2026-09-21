@@ -2,6 +2,19 @@
   "bySymbol": {
     "WIPRO.NS": [
       {
+        "runId": "wipro-test-mubdi28h",
+        "symbol": "WIPRO.NS",
+        "companyName": "Wipro Limited",
+        "timestamp": "2026-09-21T15:01:25.841Z",
+        "price": 480,
+        "cioVerdict": "BUY",
+        "cioScore": 7.8,
+        "debateSummary": "Testing memory layer persistence for WIPRO.",
+        "cioExecutiveDirective": "Accumulate on dips below ₹475.",
+        "target1": "₹530",
+        "stopLoss": "₹455"
+      },
+      {
         "runId": "wipro-test-mu5r8fkr",
         "symbol": "WIPRO.NS",
         "companyName": "Wipro Limited",
@@ -69,6 +82,19 @@
     ]
   },
   "recent": [
+    {
+      "runId": "wipro-test-mubdi28h",
+      "symbol": "WIPRO.NS",
+      "companyName": "Wipro Limited",
+      "timestamp": "2026-09-21T15:01:25.841Z",
+      "price": 480,
+      "cioVerdict": "BUY",
+      "cioScore": 7.8,
+      "debateSummary": "Testing memory layer persistence for WIPRO.",
+      "cioExecutiveDirective": "Accumulate on dips below ₹475.",
+      "target1": "₹530",
+      "stopLoss": "₹455"
+    },
     {
       "runId": "wipro-test-mu5r8fkr",
       "symbol": "WIPRO.NS",

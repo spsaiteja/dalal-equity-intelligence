@@ -115,5 +115,6 @@ export interface OrchestrationMetadata {
   };
   dissentAnalysis?: import('./dissent').ConsensusDissentAnalysis;
   routing?: import('./routing').RoutingDecision;
+  calibration?: import('./calibration').SymbolTrackRecord;
 }
 

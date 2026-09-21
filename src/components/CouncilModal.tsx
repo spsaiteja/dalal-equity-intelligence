@@ -647,6 +647,62 @@ export const CouncilModal: React.FC<CouncilModalProps> = ({
                 </div>
               )}
 
+              {/* Phase 12: Historical Deliberation Accuracy & Calibration Track Record */}
+              {consensus.metadata?.calibration && consensus.metadata.calibration.evaluations.length > 0 && (
+                <div className="bg-surface/50 border border-surface-border rounded-xl p-3.5 space-y-2.5 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                        <Award className="h-3.5 w-3.5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-bold text-[11px]">
+                            Council Accuracy Track Record ({consensus.symbol})
+                          </span>
+                          <span className="text-[9.5px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                            {consensus.metadata.calibration.metrics.directionalWinRatePercent}% Win Rate
+                          </span>
+                          <span className="text-[9.5px] px-1.5 py-0.5 rounded-full bg-surface border border-surface-border text-surface-muted">
+                            {consensus.metadata.calibration.metrics.totalEvaluatedRuns} Audited Deliberations
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[10.5px] font-mono">
+                      <span className="text-surface-muted">
+                        Profit Factor: <strong className="text-white">{consensus.metadata.calibration.metrics.profitFactor}x</strong>
+                      </span>
+                      <span className="text-surface-border">|</span>
+                      <span className="text-surface-muted">
+                        Brier Calibration: <strong className="text-purple-300">{consensus.metadata.calibration.metrics.brierAccuracyScore.toFixed(2)}</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Micro evaluation history pills */}
+                  <div className="flex flex-wrap gap-1.5 pt-1 border-t border-surface-border/50">
+                    {consensus.metadata.calibration.evaluations.slice(0, 5).map((ev) => (
+                      <div
+                        key={ev.runId}
+                        className={`text-[9.5px] px-2 py-1 rounded-md border flex items-center gap-1.5 ${
+                          ev.outcome === 'PROFITABLE'
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                            : ev.outcome === 'ADVERSE'
+                            ? 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                            : 'bg-surface border-surface-border text-surface-muted'
+                        }`}
+                      >
+                        <span className="font-bold">{ev.cioVerdict}</span>
+                        <span>({ev.priceChangePercent >= 0 ? '+' : ''}{ev.priceChangePercent}%)</span>
+                        <span className="opacity-60">{ev.holdingPeriodDays}d ago</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Phase 10: Consensus Agreement Index & Dissent Analysis */}
               {consensus.metadata?.dissentAnalysis && (
                 <div className="bg-gradient-to-r from-surface via-surface-card to-surface border border-surface-border rounded-xl p-4 space-y-3">

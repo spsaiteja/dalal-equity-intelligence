@@ -213,3 +213,27 @@ export async function getRecentMarketDeliberations(limit: number = 5): Promise<D
   return (localStore.recent || []).slice(0, limit);
 }
 
+/**
+ * Retrieves all stored deliberations across all symbols for system-wide calibration.
+ */
+export async function getAllDeliberations(): Promise<DeliberationMemoryEntry[]> {
+  const localStore = readLocalMemory();
+  const map = new Map<string, DeliberationMemoryEntry>();
+
+  for (const item of localStore.recent || []) {
+    if (item.runId) map.set(item.runId, item);
+  }
+
+  for (const entries of Object.values(localStore.bySymbol || {})) {
+    if (Array.isArray(entries)) {
+      for (const item of entries) {
+        if (item.runId) map.set(item.runId, item);
+      }
+    }
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+}
+

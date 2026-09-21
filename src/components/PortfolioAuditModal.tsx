@@ -6,6 +6,7 @@ import {
   RebalanceAction,
   SectorWeight,
 } from '@/types/upstox';
+import { RebalancePlan } from '@/types/rebalance';
 import {
   X,
   Shield,
@@ -22,6 +23,10 @@ import {
   Sparkles,
   BarChart3,
   Layers,
+  Scale,
+  DollarSign,
+  ArrowRight,
+  FileText,
 } from 'lucide-react';
 
 interface PortfolioAuditModalProps {
@@ -29,6 +34,7 @@ interface PortfolioAuditModalProps {
   onClose: () => void;
   report: PortfolioAuditReport | null;
   loading: boolean;
+  holdings?: any[];
 }
 
 export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
@@ -36,8 +42,31 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
   onClose,
   report,
   loading,
+  holdings = [],
 }) => {
-  const [activeTab, setActiveTab] = useState<'rebalancing' | 'sectors' | 'agents'>('rebalancing');
+  const [activeTab, setActiveTab] = useState<'rebalancing' | 'quantitative' | 'sectors' | 'agents'>('rebalancing');
+  const [rebalancePlan, setRebalancePlan] = useState<RebalancePlan | null>(null);
+  const [loadingRebalance, setLoadingRebalance] = useState<boolean>(false);
+
+  // Auto-fetch or lazily fetch institutional rebalance plan
+  React.useEffect(() => {
+    if (isOpen && activeTab === 'quantitative' && !rebalancePlan && !loadingRebalance) {
+      setLoadingRebalance(true);
+      fetch('/api/ai/portfolio/rebalance', {
+        method: holdings && holdings.length > 0 ? 'POST' : 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        ...(holdings && holdings.length > 0 ? { body: JSON.stringify({ holdings }) } : {}),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.plan) {
+            setRebalancePlan(data.plan);
+          }
+        })
+        .catch((err) => console.error('Failed to load quantitative rebalance plan:', err))
+        .finally(() => setLoadingRebalance(false));
+    }
+  }, [isOpen, activeTab, holdings, rebalancePlan, loadingRebalance]);
 
   if (!isOpen) return null;
 
@@ -155,7 +184,18 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                   }`}
                 >
                   <TrendingUp className="h-3.5 w-3.5" />
-                  <span>Actionable Rebalancing Plan</span>
+                  <span>Actionable Rebalancing</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('quantitative')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    activeTab === 'quantitative'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-surface-muted hover:text-white bg-surface'
+                  }`}
+                >
+                  <Scale className="h-3.5 w-3.5 text-purple-300" />
+                  <span>Algorithmic Rebalancer (Phase 14)</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('sectors')}
@@ -238,6 +278,192 @@ export const PortfolioAuditModal: React.FC<PortfolioAuditModalProps> = ({
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {/* Tab: Quantitative Algorithmic Rebalancer (Phase 14) */}
+              {activeTab === 'quantitative' && (
+                <div className="space-y-4">
+                  {loadingRebalance ? (
+                    <div className="py-16 text-center space-y-3">
+                      <div className="h-10 w-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                      <p className="text-xs text-purple-300 font-bold uppercase tracking-wider">
+                        Computing HHI Diversification, Sector Caps & Algorithmic Trade Sizing...
+                      </p>
+                    </div>
+                  ) : rebalancePlan ? (
+                    <div className="space-y-4">
+                      {/* Quantitative Summary Header Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="bg-surface border border-surface-border rounded-xl p-3 space-y-1">
+                          <div className="text-[10px] uppercase font-bold text-surface-muted flex items-center gap-1">
+                            <Award className="h-3 w-3 text-purple-400" /> Grade & Score
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl font-black text-white">{rebalancePlan.currentHealth.grade}</span>
+                            <span className="text-xs font-bold text-purple-400">({rebalancePlan.currentHealth.healthScore}/100)</span>
+                          </div>
+                          <div className="text-[10px] text-surface-muted">
+                            Projected: <span className="text-emerald-400 font-semibold">{rebalancePlan.projectedHealth.projectedGrade} ({rebalancePlan.projectedHealth.projectedScore}/100)</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-surface border border-surface-border rounded-xl p-3 space-y-1">
+                          <div className="text-[10px] uppercase font-bold text-surface-muted flex items-center gap-1">
+                            <Scale className="h-3 w-3 text-blue-400" /> HHI Index
+                          </div>
+                          <div className="text-xl font-black text-white font-mono">
+                            {rebalancePlan.currentHealth.hhiIndex}
+                          </div>
+                          <div className="text-[10px] text-surface-muted">
+                            {rebalancePlan.currentHealth.hhiIndex < 1500 ? 'Well-Diversified' : rebalancePlan.currentHealth.hhiIndex < 2500 ? 'Moderate' : 'High Concentration'}
+                          </div>
+                        </div>
+
+                        <div className="bg-surface border border-surface-border rounded-xl p-3 space-y-1">
+                          <div className="text-[10px] uppercase font-bold text-surface-muted flex items-center gap-1">
+                            <DollarSign className="h-3 w-3 text-emerald-400" /> Freed Risk Capital
+                          </div>
+                          <div className="text-xl font-black text-emerald-400 font-mono">
+                            ₹{rebalancePlan.projectedHealth.freedCapitalINR.toLocaleString('en-IN')}
+                          </div>
+                          <div className="text-[10px] text-surface-muted">
+                            Redeployed: ₹{rebalancePlan.projectedHealth.reallocatedCapitalINR.toLocaleString('en-IN')}
+                          </div>
+                        </div>
+
+                        <div className="bg-surface border border-surface-border rounded-xl p-3 space-y-1">
+                          <div className="text-[10px] uppercase font-bold text-surface-muted flex items-center gap-1">
+                            <Shield className="h-3 w-3 text-amber-400" /> Drawdown Risk
+                          </div>
+                          <div className={`text-xl font-black ${
+                            rebalancePlan.currentHealth.maxDrawdownRisk === 'HIGH' ? 'text-rose-400' :
+                            rebalancePlan.currentHealth.maxDrawdownRisk === 'ELEVATED' ? 'text-amber-400' : 'text-emerald-400'
+                          }`}>
+                            {rebalancePlan.currentHealth.maxDrawdownRisk}
+                          </div>
+                          <div className="text-[10px] text-surface-muted">
+                            {rebalancePlan.currentHealth.violations.length} policy alerts
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Violations Strip */}
+                      {rebalancePlan.currentHealth.violations.length > 0 && (
+                        <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 space-y-1.5">
+                          <div className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
+                            Active Concentration & Risk Violations ({rebalancePlan.currentHealth.violations.length})
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {rebalancePlan.currentHealth.violations.map((v, i) => (
+                              <div key={i} className="text-[11px] text-rose-200 bg-rose-950/40 p-2 rounded-lg border border-rose-500/20">
+                                <span className="font-bold">{v.description}</span>: Current {v.currentValue} (Mandated {v.limit})
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Algorithmic Sizing Table */}
+                      <div className="overflow-x-auto border border-surface-border rounded-xl">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-surface/80 text-surface-muted font-bold uppercase tracking-wider text-[10px] border-b border-surface-border">
+                            <tr>
+                              <th className="py-2.5 px-3">Asset</th>
+                              <th className="py-2.5 px-3 text-center">Directive</th>
+                              <th className="py-2.5 px-3">Shares Delta</th>
+                              <th className="py-2.5 px-3">Capital Delta (₹)</th>
+                              <th className="py-2.5 px-3">Weight Target</th>
+                              <th className="py-2.5 px-3">Urgency</th>
+                              <th className="py-2.5 px-3">Algorithmic Rationale</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-surface-border">
+                            {rebalancePlan.actions.map((act, idx) => {
+                              let badgeColor = 'bg-surface text-surface-muted border-surface-border';
+                              if (act.action === 'TRIM') badgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+                              else if (act.action === 'EXIT') badgeColor = 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+                              else if (act.action === 'ACCUMULATE') badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+
+                              return (
+                                <tr key={idx} className="hover:bg-surface-hover/80 transition-colors">
+                                  <td className="py-2.5 px-3 font-bold text-white">
+                                    {act.symbol}
+                                    <div className="text-[10px] font-normal text-surface-muted">{act.companyName}</div>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${badgeColor}`}>
+                                      {act.action}
+                                    </span>
+                                  </td>
+                                  <td className={`py-2.5 px-3 font-mono font-bold ${
+                                    act.deltaShares < 0 ? 'text-amber-400' : act.deltaShares > 0 ? 'text-emerald-400' : 'text-surface-muted'
+                                  }`}>
+                                    {act.deltaShares > 0 ? `+${act.deltaShares}` : act.deltaShares} shares
+                                    <div className="text-[10px] font-normal text-surface-muted">({act.currentShares} → {act.targetShares})</div>
+                                  </td>
+                                  <td className={`py-2.5 px-3 font-mono font-semibold ${
+                                    act.capitalDeltaINR < 0 ? 'text-emerald-400' : act.capitalDeltaINR > 0 ? 'text-blue-400' : 'text-surface-muted'
+                                  }`}>
+                                    {act.capitalDeltaINR !== 0 ? `₹${Math.abs(act.capitalDeltaINR).toLocaleString('en-IN')}` : '₹0'}
+                                    <div className="text-[10px] font-normal text-surface-muted">
+                                      {act.capitalDeltaINR < 0 ? 'Freed to Cash' : act.capitalDeltaINR > 0 ? 'Deployed' : 'Preserved'}
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3 font-medium text-white">
+                                    {act.currentWeightPercent}% → <span className="font-bold text-purple-300">{act.targetWeightPercent}%</span>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                      act.urgency === 'IMMEDIATE' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' :
+                                      act.urgency === 'HIGH' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
+                                      act.urgency === 'MEDIUM' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
+                                      'bg-surface text-surface-muted'
+                                    }`}>
+                                      {act.urgency}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-[11px] text-surface-text max-w-xs leading-relaxed">
+                                    {act.rationale}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* SEBI Compliance Notice */}
+                      <p className="text-[10px] text-surface-muted italic">
+                        {rebalancePlan.sebiDisclaimer}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center space-y-3">
+                      <p className="text-xs text-surface-muted">
+                        No quantitative rebalancing plan generated yet.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setLoadingRebalance(true);
+                          fetch('/api/ai/portfolio/rebalance', {
+                            method: holdings && holdings.length > 0 ? 'POST' : 'GET',
+                            headers: { 'Content-Type': 'application/json' },
+                            ...(holdings && holdings.length > 0 ? { body: JSON.stringify({ holdings }) } : {}),
+                          })
+                            .then((res) => res.json())
+                            .then((data) => {
+                              if (data?.plan) setRebalancePlan(data.plan);
+                            })
+                            .finally(() => setLoadingRebalance(false));
+                        }}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl shadow-lg transition-colors"
+                      >
+                        Calculate Institutional Rebalance Plan
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -493,6 +493,19 @@ Eliminates single-perspective cognitive bias by simulating an institutional inve
   - Sentinel automatically evaluates chart vision diagnostics and attaches `chartVision` to `SentinelReport`.
   - [`CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx) displays visual pattern badge, confidence score %, candlestick formation chips, and breakout target in Agent Sentinel's card.
 
+### Portfolio Health & Automated Rebalancing Agent (`rebalancer.ts`):
+- **Quantitative Portfolio Health & Concentration Metrics**:
+  - `calculatePortfolioHealth()` computes mathematical Herfindahl-Hirschman Index ($\text{HHI} = \sum w_i^2$), 0–100 Diversification Score, institutional single-equity concentration limits (12% default cap), and sector caps (25% default cap).
+  - Assigns institutional credit-rating style grades (`AAA`, `AA`, `A`, `BBB`, `BB`, `B`, `CCC`) and evaluates tail risk drawdown tiers (`LOW`, `MODERATE`, `ELEVATED`, `HIGH`).
+- **Algorithmic Sizing & Capital Redeployment Engine**:
+  - `generateRebalancePlan()` enforces stop-loss capital protection first, computes precise share reduction quantities (`TRIM`, `EXIT`) to cap overweight exposures, redeploys freed capital into under-allocated winners (`ACCUMULATE`), and manages liquid cash reserves.
+  - Conserves total portfolio capital while projecting elevated health score and reduced HHI post-rebalance.
+- **REST API Endpoint**:
+  - `POST /api/ai/portfolio/rebalance`: Quantitatively audits custom portfolio holdings against institutional policy caps.
+  - `GET /api/ai/portfolio/rebalance`: Diagnostic benchmark route evaluating standard 6-stock NSE benchmark portfolio.
+- **UI Integration in Portfolio Audit Modal**:
+  - [`PortfolioAuditModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/PortfolioAuditModal.tsx) features an interactive "Algorithmic Rebalancer (Phase 14)" tab rendering health grade badges, HHI gauges, freed/redeployed capital metrics, violation alert strips, and algorithmic trade sizing tables with share deltas and rupee figures.
+
 ### UI Chamber Experience:
 - Rendered in [`src/components/CouncilModal.tsx`](file:///c:/Users/tejas/OneDrive/Documents/AI%20Project/src/components/CouncilModal.tsx).
 - Features a header score gauge, dynamic routing strategy bar, historical deliberation trajectory ribbon, accuracy track record panel, committee consensus & dissent meter, primary dissenting voice callout, debate summary, CIO trade plan card, telemetry status bar (interactive Run ID link to Telemetry Modal, Latency, Model, Tools Executed, Token estimate, Agent badges, Safety status badge), SEBI compliance disclaimer banner, amber fallback chips on rate-limited agents, standby badges on dormant agents, interactive tabs to read the unvarnished arguments of each agent, Human-in-the-Loop customization/veto controls, embedded **Interrogation & What-If Chamber**, and **Sentinel Multi-Modal Chart Vision Diagnostics**.
@@ -1051,7 +1064,8 @@ In your Vercel Project Settings &rarr; **Environment Variables**, set:
 | Metric / Pipeline | Expected Standard | Verified Result | Status |
 | :--- | :--- | :--- | :--- |
 | **TypeScript Compilation** | Zero type errors (`npx tsc --noEmit`) | **0 Errors (Exit code 0)** | Passed |
-| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **32 Routes Compiled Successfully** | Passed |
+| **Production Webpack Build** | Clean Next.js build (`npm run build`) | **33 Routes Compiled Successfully** | Passed |
+| **Portfolio Health & Automated Rebalancing** | HHI Index, sector caps, share sizing & capital redeployment | **36/36 Tests Passed (/api/ai/portfolio/rebalance)** | Passed |
 | **Multi-Modal Chart Pattern Vision** | Candlestick formations, structural patterns & targets | **19/19 Tests Passed (/api/ai/vision/analyze)** | Passed |
 | **Deliberation Calibration & Accuracy** | Retrospective evaluation, win rates & Brier score | **31/31 Tests Passed (/api/ai/council/calibration)** | Passed |
 | **Dynamic Multi-Agent Routing** | Selective dispatch, market profiles & dormant synthetic reports | **35/35 Tests Passed (Up to 50% latency saved)** | Passed |

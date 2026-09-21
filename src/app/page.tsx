@@ -957,6 +957,7 @@ export default function Dashboard() {
         onClose={() => setIsPortfolioAuditOpen(false)}
         report={portfolioAuditReport}
         loading={loadingPortfolioAudit}
+        holdings={portfolioHoldings}
       />
 
       {/* Institutional Trading Ticket / 1-Click Execution Modal */}

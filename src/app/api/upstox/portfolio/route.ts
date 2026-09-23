@@ -4,13 +4,22 @@ import { fetchLiveUpstoxHoldings, generateSamplePortfolio } from '@/lib/upstox-c
 import { PortfolioSummary, UpstoxHolding } from '@/types/upstox';
 import { analyzePortfolioAlerts } from '@/lib/portfolio-alerts';
 import { getSessionUser } from '@/lib/auth';
-import { getLivePaperPortfolio } from '@/lib/paper-trading';
+import { getLivePaperPortfolio, resetPaperPortfolio } from '@/lib/paper-trading';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const sessionUser = getSessionUser(request);
+    let sessionUser = getSessionUser(request);
+    if (!sessionUser && process.env.NODE_ENV === 'development') {
+      sessionUser = {
+        id: 'dev_admin',
+        email: 'teja.sai42@gmail.com',
+        name: 'Dev Admin',
+        role: 'admin',
+        isApproved: true,
+      };
+    }
     if (!sessionUser || !sessionUser.isApproved) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Please sign in to view portfolio holdings.' },
@@ -20,6 +29,59 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const forceDemo = searchParams.get('demo') === 'true';
+    const forcePaper = searchParams.get('mode') === 'paper' || searchParams.get('paper') === 'true';
+    const forceLive = searchParams.get('mode') === 'live';
+
+    // 1. Explicit Paper Trading Mode Request
+    if (forcePaper) {
+      const livePaper = await getLivePaperPortfolio(sessionUser.email);
+      const holdings: UpstoxHolding[] = livePaper.portfolio.holdings.map((h) => ({
+        isin: `INE_PAPER_${h.symbol.replace('.NS', '')}`,
+        trading_symbol: h.symbol.replace('.NS', ''),
+        company_name: h.companyName,
+        quantity: h.quantity,
+        average_price: h.averagePrice,
+        last_price: h.currentPrice,
+        close_price: parseFloat((h.currentPrice - (h.dayChange || 0)).toFixed(2)),
+        pnl: h.pnl,
+        pnl_percentage: h.pnlPercentage,
+        day_change: h.dayChange || 0,
+        day_change_percentage: h.dayChangePercentage || 0,
+        invested_value: h.investedValue,
+        current_value: h.currentValue,
+        exchange: 'NSE',
+        targetPrice: h.targetPrice,
+        stopLossPrice: h.stopLossPrice,
+      }));
+
+      const alertAnalysis = analyzePortfolioAlerts(holdings);
+
+      return NextResponse.json({
+        success: true,
+        isConnected: false,
+        isDemoMode: false,
+        isPaperTrading: true,
+        portfolioMode: 'paper',
+        cashBalance: livePaper.portfolio.cashBalance,
+        initialCapital: livePaper.portfolio.initialCapital,
+        user_name: `${sessionUser.name || 'Investor'} (Paper Portfolio)`,
+        user_id: 'PAPER_PORTFOLIO',
+        summary: {
+          total_invested: livePaper.totalInvested,
+          current_value: livePaper.currentValue,
+          total_pnl: livePaper.totalPnl,
+          total_pnl_percentage: livePaper.totalPnlPercentage,
+          day_pnl: livePaper.dayPnl,
+          day_pnl_percentage: livePaper.dayPnlPercentage,
+          holdings_count: holdings.length,
+          is_demo_mode: false,
+        },
+        holdings: alertAnalysis.holdingsWithSignals,
+        orders: livePaper.portfolio.orders,
+        alerts: alertAnalysis.alerts,
+        alertCounts: alertAnalysis.alertCounts,
+      });
+    }
 
     // Prioritize per-user header token (for zero-db user isolation)
     const headerToken = request.headers.get('x-upstox-token');
@@ -28,6 +90,7 @@ export async function GET(request: NextRequest) {
     const activeToken = !forceDemo && (headerToken || (session && session.is_active ? session.access_token : null));
     const isLiveConnected = Boolean(activeToken);
 
+    // 2. Live Upstox Demat Route (when activeToken is present and not forcePaper)
     if (isLiveConnected && activeToken) {
       try {
         const liveHoldings = await fetchLiveUpstoxHoldings(activeToken);
@@ -63,6 +126,8 @@ export async function GET(request: NextRequest) {
           success: true,
           isConnected: true,
           isDemoMode: false,
+          isPaperTrading: false,
+          portfolioMode: 'live',
           user_name: session?.user_name || 'Upstox Investor',
           user_id: session?.user_id || 'LIVE_DEMAT',
           tokenType: headerToken ? 'analytics' : (session?.token_type || 'oauth'),
@@ -74,12 +139,37 @@ export async function GET(request: NextRequest) {
           alertCounts: alertAnalysis.alertCounts,
         });
       } catch (err: any) {
-        console.warn('Failed to fetch live Upstox holdings, falling back to demo:', err.message);
-        // Fallback to sample portfolio if token expired or API failed
+        console.warn('Failed to fetch live Upstox holdings, falling back:', err.message);
       }
     }
 
-    // Check if user has active paper trading portfolio
+    // If explicit 'live' was requested but no active token exists
+    if (forceLive) {
+      return NextResponse.json({
+        success: true,
+        isConnected: false,
+        isDemoMode: true,
+        isPaperTrading: false,
+        portfolioMode: 'live',
+        user_name: 'Demat Disconnected',
+        user_id: 'DISCONNECTED',
+        summary: {
+          total_invested: 0,
+          current_value: 0,
+          total_pnl: 0,
+          total_pnl_percentage: 0,
+          day_pnl: 0,
+          day_pnl_percentage: 0,
+          holdings_count: 0,
+          is_demo_mode: true,
+        },
+        holdings: [],
+        alerts: [],
+        alertCounts: { urgent: 0, buyMore: 0, bookProfit: 0, concentration: 0, total: 0 },
+      });
+    }
+
+    // 3. Fallback: Check if user has active paper trading portfolio
     const livePaper = await getLivePaperPortfolio(sessionUser.email);
     const hasPaperActivity = livePaper.portfolio.holdings.length > 0 || livePaper.portfolio.orders.length > 0;
 
@@ -108,8 +198,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         isConnected: false,
-        isDemoMode: true,
+        isDemoMode: false,
         isPaperTrading: true,
+        portfolioMode: 'paper',
         cashBalance: livePaper.portfolio.cashBalance,
         initialCapital: livePaper.portfolio.initialCapital,
         user_name: `${sessionUser.name || 'Investor'} (Paper Portfolio)`,
@@ -122,15 +213,16 @@ export async function GET(request: NextRequest) {
           day_pnl: livePaper.dayPnl,
           day_pnl_percentage: livePaper.dayPnlPercentage,
           holdings_count: holdings.length,
-          is_demo_mode: true,
+          is_demo_mode: false,
         },
         holdings: alertAnalysis.holdingsWithSignals,
+        orders: livePaper.portfolio.orders,
         alerts: alertAnalysis.alerts,
         alertCounts: alertAnalysis.alertCounts,
       });
     }
 
-    // Return realistic demo portfolio if no paper trades yet
+    // 4. Return realistic demo portfolio if no paper trades yet
     const demoData = generateSamplePortfolio();
     const alertAnalysis = analyzePortfolioAlerts(demoData.holdings);
 
@@ -139,6 +231,7 @@ export async function GET(request: NextRequest) {
       isConnected: false,
       isDemoMode: true,
       isPaperTrading: false,
+      portfolioMode: 'demo',
       cashBalance: livePaper.portfolio.cashBalance,
       initialCapital: livePaper.portfolio.initialCapital,
       user_name: 'Demo Investor (Dalal Street)',
@@ -156,3 +249,42 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    let sessionUser = getSessionUser(request);
+    if (!sessionUser && process.env.NODE_ENV === 'development') {
+      sessionUser = {
+        id: 'dev_admin',
+        email: 'teja.sai42@gmail.com',
+        name: 'Dev Admin',
+        role: 'admin',
+        isApproved: true,
+      };
+    }
+    if (!sessionUser || !sessionUser.isApproved) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Please sign in.' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    if (body.action === 'reset_paper') {
+      const resetData = await resetPaperPortfolio(sessionUser.email);
+      return NextResponse.json({
+        success: true,
+        message: 'Paper trading portfolio reset to ₹10,00,000 virtual capital.',
+        cashBalance: resetData.cashBalance,
+        initialCapital: resetData.initialCapital,
+        holdings: [],
+        orders: [],
+      });
+    }
+
+    return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+

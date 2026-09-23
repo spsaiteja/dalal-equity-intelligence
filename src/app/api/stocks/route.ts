@@ -53,6 +53,10 @@ export async function GET(request: NextRequest) {
     const search = (searchParams.get('search') || '').toLowerCase().trim();
     const limit = parseInt(searchParams.get('limit') || '500', 10);
     const forceRefresh = searchParams.get('refresh') === 'true';
+    const symbolsParam = searchParams.get('symbols');
+    const specificSymbols = symbolsParam
+      ? symbolsParam.split(',').map((s) => s.trim()).filter(Boolean)
+      : null;
 
     const now = Date.now();
     let allQuotes: StockQuote[] = [];
@@ -69,27 +73,43 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 3. Fallback: Fetch in chunks if empty or force refresh requested
-    if (allQuotes.length === 0) {
+    // 3. If cache is empty, expired, or forceRefresh requested: Refresh live quotes!
+    if (allQuotes.length === 0 || forceRefresh) {
       const diskData = getDiskCache();
-      if (diskData && diskData.quotes.length > 0 && !forceRefresh) {
-        // Use available disk data even if older than TTL while refreshing
-        allQuotes = diskData.quotes;
-        stockCache = diskData;
-      } else {
-        const chunkSize = 40;
-        for (let i = 0; i < POPULAR_INDIAN_STOCKS.length; i += chunkSize) {
-          const chunk = POPULAR_INDIAN_STOCKS.slice(i, i + chunkSize);
-          const quotes = await Promise.all(chunk.map((s) => fetchStockQuote(s.symbol)));
-          const valid = quotes.filter((q): q is StockQuote => q !== null);
-          allQuotes.push(...valid);
-        }
+      const existingQuotes = diskData?.quotes || stockCache?.quotes || [];
+      const quoteMap = new Map<string, StockQuote>();
+      existingQuotes.forEach((q) => quoteMap.set(q.symbol, q));
 
-        if (allQuotes.length > 0) {
-          stockCache = { quotes: allQuotes, timestamp: now };
-          saveDiskCache(allQuotes);
-        }
+      // Refresh the top active / Nifty 50 stocks live
+      const priorityStocks = POPULAR_INDIAN_STOCKS.filter((s) => s.nifty50);
+      const chunkSize = 15;
+      for (let i = 0; i < priorityStocks.length; i += chunkSize) {
+        const chunk = priorityStocks.slice(i, i + chunkSize);
+        const quotes = await Promise.all(chunk.map((s) => fetchStockQuote(s.symbol)));
+        quotes.forEach((q) => {
+          if (q) quoteMap.set(q.symbol, q);
+        });
       }
+
+      allQuotes = Array.from(quoteMap.values());
+      if (allQuotes.length > 0) {
+        stockCache = { quotes: allQuotes, timestamp: now };
+        saveDiskCache(allQuotes);
+      } else if (existingQuotes.length > 0) {
+        allQuotes = existingQuotes;
+      }
+    }
+
+    // If specific symbols were explicitly requested (e.g. for Watchlist live quotes)
+    if (specificSymbols && specificSymbols.length > 0) {
+      const freshRequested = await Promise.all(specificSymbols.map((sym) => fetchStockQuote(sym)));
+      const freshMap = new Map<string, StockQuote>();
+      freshRequested.forEach((q) => {
+        if (q) freshMap.set(q.symbol, q);
+      });
+
+      // Merge into allQuotes
+      allQuotes = allQuotes.map((q) => freshMap.get(q.symbol) || q);
     }
 
     let validQuotes = [...allQuotes];

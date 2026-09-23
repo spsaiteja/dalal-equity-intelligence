@@ -157,4 +157,21 @@ export interface OrderPlacementResponse {
   isPaperTrade: boolean;
 }
 
+export interface PaperOrder {
+  orderId: string;
+  symbol: string;
+  companyName: string;
+  quantity: number;
+  price: number;
+  orderType: 'MARKET' | 'LIMIT';
+  transactionType: 'BUY' | 'SELL';
+  productType: 'D' | 'I';
+  status: 'COMPLETE' | 'AMO_QUEUED' | 'REJECTED';
+  timestamp: string;
+  totalValue: number;
+  message: string;
+  isPaperTrade: true;
+}
+
+
 

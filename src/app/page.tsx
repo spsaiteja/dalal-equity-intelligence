@@ -28,7 +28,7 @@ import {
   MarketBriefing,
 } from '@/types/stock';
 import { CouncilConsensus } from '@/types/agent';
-import { UpstoxHolding, PortfolioSummary, PortfolioAuditReport, PortfolioAlert } from '@/types/upstox';
+import { UpstoxHolding, PortfolioSummary, PortfolioAuditReport, PortfolioAlert, PaperOrder } from '@/types/upstox';
 import { fetchLiveUpstoxHoldings, calculatePortfolioSummary } from '@/lib/upstox-client';
 import { analyzePortfolioAlerts } from '@/lib/portfolio-alerts';
 
@@ -80,6 +80,10 @@ export default function Dashboard() {
     concentration: number;
     total: number;
   }>({ urgent: 0, buyMore: 0, bookProfit: 0, concentration: 0, total: 0 });
+  const [portfolioMode, setPortfolioMode] = useState<'live' | 'paper'>('paper');
+  const [paperCashBalance, setPaperCashBalance] = useState<number>(1000000);
+  const [paperInitialCapital, setPaperInitialCapital] = useState<number>(1000000);
+  const [paperOrders, setPaperOrders] = useState<PaperOrder[]>([]);
 
   // Portfolio Audit States
   const [isPortfolioAuditOpen, setIsPortfolioAuditOpen] = useState<boolean>(false);
@@ -315,20 +319,19 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Fetch Upstox or Demo Portfolio (Scoped to user's personal token)
-  const loadPortfolio = useCallback(async (refresh: boolean = false) => {
+  // Fetch Upstox or Paper Trading Portfolio
+  const loadPortfolio = useCallback(async (refresh: boolean = false, requestedMode?: 'live' | 'paper') => {
     setLoadingPortfolio(true);
     try {
+      const activeMode = requestedMode || portfolioMode;
       const userTokenKey = session?.user?.email ? `dalal_upstox_token_${session.user.email}` : 'dalal_upstox_token';
       const userUpstoxToken =
         typeof window !== 'undefined'
           ? localStorage.getItem(userTokenKey) || localStorage.getItem('dalal_upstox_token')
           : null;
 
-      // 1. Browser-Direct Smart Route (100% Free):
-      // If user has configured their personal Upstox token, fetch holdings directly from browser!
-      // This routes the call from the user's whitelisted home/broadband IP, completely bypassing Vercel AWS IPs.
-      if (userUpstoxToken) {
+      // 1. Browser-Direct Smart Route (Only when in 'live' mode and user has personal token)
+      if (activeMode === 'live' && userUpstoxToken) {
         try {
           const liveHoldings = await fetchLiveUpstoxHoldings(userUpstoxToken);
           if (Array.isArray(liveHoldings)) {
@@ -352,7 +355,11 @@ export default function Dashboard() {
       }
 
       // 2. Fallback to server route (handles paper trading / demo portfolio / OAuth sessions)
-      const res = await fetch(`/api/upstox/portfolio${refresh ? '?refresh=true' : ''}`, {
+      const params = new URLSearchParams();
+      if (refresh) params.set('refresh', 'true');
+      if (activeMode) params.set('mode', activeMode);
+
+      const res = await fetch(`/api/upstox/portfolio?${params.toString()}`, {
         headers: userUpstoxToken ? { 'x-upstox-token': userUpstoxToken } : {},
       });
       const data = await res.json();
@@ -363,6 +370,9 @@ export default function Dashboard() {
         setIsDemoPortfolio(Boolean(data.isDemoMode));
         setIsAnalyticsPortfolio(Boolean(data.isAnalyticsToken));
         setPortfolioUserName(data.user_name || null);
+        if (typeof data.cashBalance === 'number') setPaperCashBalance(data.cashBalance);
+        if (typeof data.initialCapital === 'number') setPaperInitialCapital(data.initialCapital);
+        if (Array.isArray(data.orders)) setPaperOrders(data.orders);
         if (data.alerts) setPortfolioAlerts(data.alerts);
         if (data.alertCounts) setPortfolioAlertCounts(data.alertCounts);
       }
@@ -371,13 +381,55 @@ export default function Dashboard() {
     } finally {
       setLoadingPortfolio(false);
     }
-  }, [session?.user?.email]);
+  }, [session?.user?.email, portfolioMode]);
+
+  const handleTogglePortfolioMode = (newMode: 'live' | 'paper') => {
+    setPortfolioMode(newMode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dalal_portfolio_mode', newMode);
+    }
+    loadPortfolio(true, newMode);
+  };
+
+  const handleResetPaperPortfolio = async () => {
+    if (!confirm('Are you sure you want to reset your simulated Paper Trading portfolio? All paper holdings and orders will be cleared, and your virtual capital will reset to ₹10,00,000.')) {
+      return;
+    }
+    try {
+      setLoadingPortfolio(true);
+      const res = await fetch('/api/upstox/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset_paper' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPortfolioHoldings([]);
+        setPaperOrders([]);
+        setPaperCashBalance(data.cashBalance || 1000000);
+        setPaperInitialCapital(data.initialCapital || 1000000);
+        loadPortfolio(true, 'paper');
+      }
+    } catch (err) {
+      console.error('Failed to reset paper portfolio:', err);
+    } finally {
+      setLoadingPortfolio(false);
+    }
+  };
 
   useEffect(() => {
     if (session?.isApproved) {
       loadIndices();
       loadStocks();
       loadPortfolio();
+
+      // Live market rate poll interval (every 60s)
+      const quoteInterval = setInterval(() => {
+        loadIndices();
+        loadStocks(true);
+      }, 60 * 1000);
+
+      return () => clearInterval(quoteInterval);
     }
   }, [session?.isApproved, loadIndices, loadStocks, loadPortfolio]);
 
@@ -849,6 +901,12 @@ export default function Dashboard() {
             alertCounts={portfolioAlertCounts}
             onOpenOrderModal={handleOpenOrderModal}
             isAnalyticsToken={isAnalyticsPortfolio}
+            portfolioMode={portfolioMode}
+            onTogglePortfolioMode={handleTogglePortfolioMode}
+            cashBalance={paperCashBalance}
+            initialCapital={paperInitialCapital}
+            orders={paperOrders}
+            onResetPaperPortfolio={handleResetPaperPortfolio}
           />
         )}
 
@@ -970,8 +1028,16 @@ export default function Dashboard() {
         suggestedStopLoss={orderStopLossPrice}
         isUpstoxConnected={isUpstoxConnected}
         isAnalyticsToken={isAnalyticsPortfolio}
-        onOrderSuccess={(_res) => {
-          loadPortfolio(true);
+        onOrderSuccess={(res) => {
+          if (res?.isPaperTrade) {
+            setPortfolioMode('paper');
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('dalal_portfolio_mode', 'paper');
+            }
+            loadPortfolio(true, 'paper');
+          } else {
+            loadPortfolio(true, 'live');
+          }
         }}
       />
 

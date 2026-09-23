@@ -41,4 +41,6 @@ next-env.d.ts
 # private user credentials and sessions
 data/upstox_config.json
 data/upstox_session.json
+data/papertrade_*.json
+
 
